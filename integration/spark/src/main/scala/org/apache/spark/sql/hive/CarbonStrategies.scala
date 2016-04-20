@@ -159,6 +159,11 @@ class CarbonStrategies(sqlContext: SQLContext) extends QueryPlanner[SparkPlan] {
         ExecutedCommand(ShowCreateCube(cm, plan.output)) :: Nil
       case ShowTablesDetailedCommand(schemaName) =>
         ExecutedCommand(ShowAllTablesDetail(schemaName, plan.output)) :: Nil
+      case DropTable(tableName,ifNotExists)
+        if(CarbonEnv.getInstance(sqlContext).carbonCatalog.cubeExists(Seq(tableName))(sqlContext)) =>
+        ExecutedCommand(DropCubeCommand(ifNotExists,None,tableName)) :: Nil
+      case SuggestAggregateCommand(script, sugType, schemaName, cubeName) =>
+        ExecutedCommand(SuggestAggregates(script, sugType, schemaName, cubeName, plan.output)) :: Nil
       case ShowAggregateTablesCommand(schemaName) =>
         ExecutedCommand(ShowAggregateTables(schemaName, plan.output)) :: Nil
       case ShowLoadsCommand(schemaName, cube, limit) =>
