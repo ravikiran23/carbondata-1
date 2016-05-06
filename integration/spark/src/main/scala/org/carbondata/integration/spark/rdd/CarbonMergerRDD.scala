@@ -20,21 +20,33 @@ package org.carbondata.integration.spark.rdd
 import java.text.SimpleDateFormat
 import java.util.{Date, List}
 
-import scala.collection.JavaConverters._
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.mapred.JobConf
+import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 
+import scala.collection.JavaConverters._
 import org.apache.spark.{Logging, Partition, SerializableWritable, SparkContext, TaskContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.cubemodel.Partitioner
-
 import org.carbondata.core.carbon.CarbonDef
+import org.carbondata.core.carbon.datastore.BTreeBuilderInfo
+import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo}
+import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter
 import org.carbondata.core.constants.CarbonCommonConstants
+import org.carbondata.core.iterator.CarbonIterator
 import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.{CarbonProperties, CarbonUtil}
+import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
 import org.carbondata.integration.spark.MergeResult
 import org.carbondata.integration.spark.load._
-import org.carbondata.integration.spark.merger.CarbonDataMergerUtil
+import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil, CarbonDataMergerUtil}
 import org.carbondata.integration.spark.splits.TableSplit
 import org.carbondata.integration.spark.util.CarbonQueryUtil
+import org.carbondata.query.carbon.executor.QueryExecutor
+import org.carbondata.query.carbon.model.QueryModel
+import org.carbondata.query.carbon.result.{Result, RowResult}
 
 class CarbonMergerRDD[K, V](
                              sc: SparkContext,
@@ -48,7 +60,11 @@ class CarbonMergerRDD[K, V](
                              loadsToMerge: List[String],
                              mergedLoadName: String,
                              kettleHomePath: String,
-                             cubeCreationTime: Long)
+                             cubeCreationTime: Long,
+                             tableBlockInfoList:List[TableBlockInfo],
+                             schemaName: String,
+                             factTableName: String,
+                             storePath:String)
   extends RDD[(K, V)](sc, Nil) with Logging {
 
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
@@ -60,30 +76,69 @@ class CarbonMergerRDD[K, V](
 
   override def compute(theSplit: Partition, context: TaskContext): Iterator[(K, V)] = {
     val iter = new Iterator[(K, V)] {
-      var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
-      val split = theSplit.asInstanceOf[CarbonLoadPartition]
-      logInfo("Input split: " + split.serializableHadoopSplit.value)
-      val partitionId = split.serializableHadoopSplit.value.getPartition().getUniqueID()
-      val model = carbonLoadModel
-        .getCopyWithPartition(split.serializableHadoopSplit.value.getPartition().getUniqueID())
+        var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
+        val split = theSplit.asInstanceOf[CarbonLoadPartition]
+        logInfo("Input split: " + split.serializableHadoopSplit.value)
+        val partitionId = split.serializableHadoopSplit.value.getPartition().getUniqueID()
+        val model = carbonLoadModel
+          .getCopyWithPartition(split.serializableHadoopSplit.value.getPartition().getUniqueID())
 
-      val mergedLoadMetadataDetails = CarbonDataMergerUtil
-        .executeMerging(model, storeLocation, hdfsStoreLocation, currentRestructNumber,
-          metadataFilePath, loadsToMerge, mergedLoadName)
+        // sorting the table block info List.
+        java.util.Collections.sort(tableBlockInfoList)
 
-      model.setLoadMetadataDetails(CarbonUtil
-        .readLoadMetadata(metadataFilePath).toList.asJava);
+         val segmentMapping: java.util.Map[Integer,java.util.Map[String,List[TableBlockInfo]]] =
+           CarbonCompactionUtil.createMappingForSegments(tableBlockInfoList)
 
-      if (mergedLoadMetadataDetails == true) {
-        CarbonLoaderUtil.copyMergedLoadToHDFS(model, currentRestructNumber, mergedLoadName)
-        dataloadStatus = checkAndLoadAggregationTable
+        val dataFileMetadataSegMapping: java.util.Map[Integer,List[DataFileFooter]] =
+          CarbonCompactionUtil.createDataFileMappingForSegments(tableBlockInfoList)
 
-      }
 
-      var havePair = false
-      var finished = false
+        // val cc:CarbonCompactor = new CarbonCompactor(dataFileMetadataSegMapping)
 
-      override def hasNext: Boolean = {
+        // cc.process()
+
+         val listMetadata = dataFileMetadataSegMapping.get(0)
+
+         val segmentProperties = new SegmentProperties(listMetadata.get(0).getColumnInTable,
+           listMetadata.get(0).getSegmentInfo.getColumnCardinality)
+
+
+         val exec = new CarbonCompactionExecutor(segmentMapping,segmentProperties,schemaName,
+           factTableName,storePath)
+
+      // TODO remove comment below
+     // val  resultList:List[CarbonIterator[Result]]  = exec.processTableBlocks()
+
+      //= CarbonCompactionUtil.processTableBlocks(segmentMapping,queryExecutor,segmentProperties,schemaName,factTableName)
+
+
+      // create a segment builder info
+         val indexBuilderInfo: BTreeBuilderInfo = new BTreeBuilderInfo(listMetadata, segmentProperties.getDimensionColumnsValueSize)
+
+
+
+
+
+
+        //  old code
+        val mergedLoadMetadataDetails = CarbonDataMergerUtil
+          .executeMerging(model, storeLocation, hdfsStoreLocation, currentRestructNumber,
+            metadataFilePath, loadsToMerge, mergedLoadName)
+
+        model.setLoadMetadataDetails(CarbonUtil
+          .readLoadMetadata(metadataFilePath).toList.asJava);
+
+        if (mergedLoadMetadataDetails == true) {
+          CarbonLoaderUtil.copyMergedLoadToHDFS(model, currentRestructNumber, mergedLoadName)
+          dataloadStatus = checkAndLoadAggregationTable
+
+        }
+
+        var havePair = false
+        var finished = false
+
+
+        override def hasNext: Boolean = {
         if (!finished && !havePair) {
           finished = !false
           havePair = !finished
@@ -209,12 +264,20 @@ class CarbonMergerRDD[K, V](
   }
 
   override def getPartitions: Array[Partition] = {
-    val splits = CarbonQueryUtil
-      .getTableSplits(carbonLoadModel.getDatabaseName(), carbonLoadModel.getTableName(), null,
-        partitioner)
-    val result = new Array[Partition](splits.length)
+    val carbonInputFormat = new CarbonInputFormat[RowResult]();
+    val jobConf: JobConf = new JobConf(new Configuration)
+    val job: Job = new Job(jobConf)
+
+   // FileInputFormat.addInputPath(job, new Path(absoluteTableIdentifier.getStorePath))
+   // CarbonInputFormat.setTableToAccess(job, absoluteTableIdentifier.getCarbonTableIdentifier)
+   // CarbonInputFormat.setSegmentsToAccess(job, validSegmentNos.asJava)
+
+    val splits = carbonInputFormat.getSplits(job)
+    val carbonInputSplits = splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
+    carbonInputSplits(0).getLocations;
+    val result = new Array[Partition](splits.size)
     for (i <- 0 until result.length) {
-      result(i) = new CarbonLoadPartition(id, i, splits(i))
+  //    result(i) = new CarbonLoadPartition(id, i, carbonInputSplits(i))
     }
     result
   }
