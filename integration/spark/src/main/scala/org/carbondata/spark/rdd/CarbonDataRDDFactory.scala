@@ -20,7 +20,6 @@ package org.carbondata.spark.rdd
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.spark.{Logging, SparkContext}
@@ -28,10 +27,9 @@ import org.apache.spark.rdd.{DummyLoadRDD, NewHadoopRDD}
 import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
 import org.apache.spark.sql.execution.command.Partitioner
 import org.apache.spark.util.{FileUtils, SplitUtils}
-
 import org.carbondata.common.logging.LogServiceFactory
-import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonDataLoadSchema, CarbonTableIdentifier}
-import org.carbondata.core.carbon.metadata.CarbonMetadata
+import org.carbondata.core.carbon.datastore.block.TableBlockInfo
+import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.impl.FileFactory
@@ -477,6 +475,7 @@ object CarbonDataRDDFactory extends Logging {
           if (loadsToMerge.size() == 2) {
             val MergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
             var finalMergeStatus = true
+            val tableBlockList = new java.util.ArrayList[TableBlockInfo]();
             val mergeStatus = new CarbonMergerRDD(
               sc.sparkContext,
               new MergeResultImpl(),
@@ -489,7 +488,11 @@ object CarbonDataRDDFactory extends Logging {
               loadsToMerge,
               MergedLoadName,
               kettleHomePath,
-              cubeCreationTime).collect
+              cubeCreationTime,
+              tableBlockList,
+              "",
+            "",
+            "").collect
 
             mergeStatus.foreach { eachMergeStatus =>
               val state = eachMergeStatus._2
