@@ -28,63 +28,35 @@ import org.carbondata.query.carbon.executor.impl.QueryExecutorProperties;
 import org.carbondata.query.carbon.executor.infos.BlockExecutionInfo;
 import org.carbondata.query.carbon.executor.internal.InternalQueryExecutor;
 import org.carbondata.query.carbon.model.QueryModel;
-import org.carbondata.query.carbon.result.BatchResult;
+import org.carbondata.query.carbon.result.BatchRawResult;
 import org.carbondata.query.carbon.result.Result;
 import org.carbondata.query.carbon.result.preparator.QueryResultPreparator;
-import org.carbondata.query.carbon.result.preparator.impl.QueryResultPreparatorImpl;
+import org.carbondata.query.carbon.result.preparator.impl.RawQueryResultPreparatorImpl;
 
 /**
  * In case of detail query we cannot keep all the records in memory so for
  * executing that query are returning a iterator over block and every time next
  * call will come it will execute the block and return the result
  */
-public class DetailQueryResultIterator extends AbstractDetailQueryResultIterator<BatchResult> {
+public class DetailRawQueryResultIterator
+    extends AbstractDetailQueryResultIterator<BatchRawResult> {
 
   /**
    * LOGGER.
    */
   private static final LogService LOGGER =
-      LogServiceFactory.getLogService(DetailQueryResultIterator.class.getName());
+      LogServiceFactory.getLogService(DetailRawQueryResultIterator.class.getName());
 
-  /**
-   * to prepare the result
-   */
-  private QueryResultPreparator<BatchResult> queryResultPreparator;
+  private QueryResultPreparator<BatchRawResult> queryResultPreparator;
 
-
-  public DetailQueryResultIterator(List<BlockExecutionInfo> infos,
+  public DetailRawQueryResultIterator(List<BlockExecutionInfo> infos,
       QueryExecutorProperties executerProperties, QueryModel queryModel,
       InternalQueryExecutor queryExecutor) {
     super(infos, executerProperties, queryModel, queryExecutor);
-    this.queryResultPreparator = new QueryResultPreparatorImpl(executerProperties, queryModel);
+    this.queryResultPreparator = new RawQueryResultPreparatorImpl(executerProperties, queryModel);
   }
 
-  private void intialiseInfos() {
-    this.totalNumberBlockletPerSlice = new long[blockExecutionInfos.size()];
-    this.numberOfBlockletExecutedPerBlock = new long[blockExecutionInfos.size()];
-    int index = -1;
-    for (BlockExecutionInfo blockInfo : blockExecutionInfos) {
-      ++index;
-      DataRefNodeFinder finder = new BTreeDataRefNodeFinder(blockInfo.getEachColumnValueSize());
-      DataRefNode startDataBlock = finder
-          .findFirstDataBlock(blockInfo.getDataBlock().getDataRefNode(), blockInfo.getStartKey());
-      DataRefNode endDataBlock = finder
-          .findLastDataBlock(blockInfo.getDataBlock().getDataRefNode(), blockInfo.getEndKey());
-
-      this.totalNumberBlockletPerSlice[index] =
-          endDataBlock.nodeNumber() - startDataBlock.nodeNumber() + 1;
-      totalNumberOfNode += this.totalNumberBlockletPerSlice[index];
-      blockInfo.setFirstDataBlock(startDataBlock);
-      blockInfo.setNumberOfBlockToScan(1);
-    }
-
-  }
-
-  @Override public boolean hasNext() {
-    return currentCounter < totalNumberOfNode;
-  }
-
-  @Override public BatchResult next() {
+  @Override public BatchRawResult next() {
     updateSliceIndexToBeExecuted();
     CarbonIterator<Result> result = null;
     try {
@@ -104,10 +76,10 @@ public class DetailQueryResultIterator extends AbstractDetailQueryResultIterator
       if (next.size() > 0) {
         return queryResultPreparator.prepareQueryResult(next);
       } else {
-        return new BatchResult();
+        return new BatchRawResult(new Object[0][0]);
       }
     } else {
-      return new BatchResult();
+      return new BatchRawResult(new Object[0][0]);
     }
   }
 }
