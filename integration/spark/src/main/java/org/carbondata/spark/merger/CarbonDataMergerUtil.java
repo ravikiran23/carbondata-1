@@ -601,8 +601,7 @@ public final class CarbonDataMergerUtil {
           try {
             segDate1 = sdf.parse(baselineLoadStartTime);
           } catch (ParseException e) {
-            LOGGER.error(CarbonCoreLogEvent.UNIBI_CARBONCORE_MSG,
-                "Error while parsing segment start time", e);
+            LOGGER.error("Error while parsing segment start time"+ e.getMessage());
           }
           first = false;
           loadsOfSameDate.add(segment);
@@ -614,8 +613,7 @@ public final class CarbonDataMergerUtil {
         try {
           segDate2 = sdf.parse(segmentDate);
         } catch (ParseException e) {
-          LOGGER.error(CarbonCoreLogEvent.UNIBI_CARBONCORE_MSG,
-              "Error while parsing segment start time", e);
+          LOGGER.error("Error while parsing segment start time"+ e.getMessage());
         }
 
         if (isTwoDatesPresentInRequiredRange(segDate1, segDate2, numberOfDaysAllowedToMerge)) {

@@ -237,7 +237,7 @@ public class SegmentTaskIndexStore {
 
   public Map<String, AbstractIndex> getSegmentBTreeIfExists(
       AbsoluteTableIdentifier absoluteTableIdentifier, String segmentId) {
-    Map<Integer, Map<String, AbstractIndex>> tableSegment
+    Map<String, Map<String, AbstractIndex>> tableSegment
             = tableSegmentMap.get(absoluteTableIdentifier);
     if (null == tableSegment){
       return null;
