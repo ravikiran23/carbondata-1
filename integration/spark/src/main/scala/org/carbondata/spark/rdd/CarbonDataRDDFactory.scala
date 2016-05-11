@@ -18,25 +18,32 @@
 
 package org.carbondata.spark.rdd
 
+import java.util
+import java.util.List
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{LongWritable, Text}
-import org.apache.spark.{Logging, SparkContext}
 import org.apache.spark.rdd.{DummyLoadRDD, NewHadoopRDD}
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
 import org.apache.spark.sql.execution.command.Partitioner
+import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
 import org.apache.spark.util.{FileUtils, SplitUtils}
+import org.apache.spark.{Logging, SparkContext}
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo
-import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
+import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.load.{BlockDetails, LoadMetadataDetails}
 import org.carbondata.core.locks.{CarbonLockFactory, LockUsage}
 import org.carbondata.core.util.{CarbonProperties, CarbonUtil}
-import org.carbondata.lcm.status.SegmentStatusManager
+import org.carbondata.integration.spark._
+import org.carbondata.integration.spark.load._
+import org.carbondata.integration.spark.merger.{CarbonDataMergerUtil, CompactionType}
+import org.carbondata.integration.spark.splits.TableSplit
+import org.carbondata.integration.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
 import org.carbondata.processing.util.CarbonDataProcessorUtil
 import org.carbondata.query.scanner.impl.{CarbonKey, CarbonValue}
 import org.carbondata.spark._
@@ -45,10 +52,13 @@ import org.carbondata.spark.merger.CarbonDataMergerUtil
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+
 /**
- * This is the factory class which can create different RDD depends on user needs.
- *
- */
+  * This is the factory class which can create different RDD depends on user needs.
+  *
+  */
 object CarbonDataRDDFactory extends Logging {
 
   val logger = LogServiceFactory.getLogService(CarbonDataRDDFactory.getClass.getName)
@@ -70,7 +80,8 @@ object CarbonDataRDDFactory extends Logging {
     val status = new
         CarbonDataPartitionRDD(sc, new PartitionResultImpl(), schemaName, cubeName, sourcePath,
           targetFolder, requiredColumns, headers, delimiter, quoteChar, escapeChar, multiLine,
-          partitioner).collect
+          partitioner
+        ).collect
     CarbonDataProcessorUtil
       .renameBadRecordsFromInProgressToNormal("partition/" + schemaName + '/' + cubeName)
     var loadStatus = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS
@@ -185,7 +196,8 @@ object CarbonDataRDDFactory extends Logging {
           logInfo("Successfully got the cube metadata file lock")
           if (updatedLoadMetadataDetailsList.nonEmpty) {
             LoadAggregateTabAfterRetention(schemaName, cube.getFactTableName, cube.getFactTableName,
-              sqlContext, schema, updatedLoadMetadataDetailsList)
+              sqlContext, schema, updatedLoadMetadataDetailsList
+            )
           }
 
           // write
@@ -193,7 +205,8 @@ object CarbonDataRDDFactory extends Logging {
             schema,
             schemaName,
             cube.getDatabaseName,
-            updatedloadMetadataDetails.asJava)
+            updatedloadMetadataDetails.asJava
+          )
         }
       } finally {
         if (carbonLock.unlock()) {
@@ -220,7 +233,8 @@ object CarbonDataRDDFactory extends Logging {
     val relation = CarbonEnv.getInstance(sqlContext).carbonCatalog.lookupRelation1(
       Option(schemaName),
       cubeName,
-      None)(sqlContext).asInstanceOf[CarbonRelation]
+      None
+    )(sqlContext).asInstanceOf[CarbonRelation]
     if (relation == null) {
       sys.error(s"Cube $schemaName.$cubeName does not exist")
     }
@@ -238,7 +252,8 @@ object CarbonDataRDDFactory extends Logging {
       // TODO: need to fill dimension relation from data load sql command
       var storeLocation = CarbonProperties.getInstance
         .getProperty(CarbonCommonConstants.STORE_LOCATION_TEMP_PATH,
-          System.getProperty("java.io.tmpdir"))
+          System.getProperty("java.io.tmpdir")
+        )
       storeLocation = storeLocation + "/carbonstore/" + System.currentTimeMillis()
       val columinar = sqlContext.getConf("carbon.is.columnar.storage", "true").toBoolean
       var kettleHomePath = sqlContext.getConf("carbon.kettle.home", null)
@@ -269,6 +284,63 @@ object CarbonDataRDDFactory extends Logging {
       partitionStatus: String = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS) {
     val carbonTable = carbonLoadModel.getCarbonDataLoadSchema.getCarbonTable
     var currentRestructNumber = -1
+
+    // for handling of the segment Merging.
+    def handleSegmentMerging(cubeCreationTime: Long): Unit = {
+      if (CarbonDataMergerUtil
+        .checkIfLoadMergingRequired()) {
+
+        val compactionSize = CarbonDataMergerUtil
+          .getCompactionSize(CompactionType.MINOR_COMPACTION);
+
+        val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
+          hdfsStoreLocation, FileFactory.getFileType(hdfsStoreLocation),
+          cube.getMetaDataFilepath(), carbonLoadModel, currentRestructNumber,
+          partitioner.partitionCount, compactionSize
+        );
+
+        if (loadsToMerge.size() > 1) {
+          val MergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
+          var finalMergeStatus = true
+          var tableBlockInfoList: List[TableBlockInfo] = new util.ArrayList[TableBlockInfo]()
+          var schemaName: String = ""
+          var factTableName = ""
+          var storePath = ""
+
+          val mergeStatus = new CarbonMergerRDD(
+            sc.sparkContext,
+            new MergeResultImpl(),
+            carbonLoadModel,
+            storeLocation,
+            hdfsStoreLocation,
+            partitioner,
+            currentRestructNumber,
+            cube.getMetaDataFilepath(),
+            loadsToMerge,
+            MergedLoadName,
+            kettleHomePath,
+            cubeCreationTime,
+            tableBlockInfoList: List[TableBlockInfo],
+            schemaName: String,
+            factTableName: String,
+            storePath: String
+          ).collect
+
+          mergeStatus.foreach { eachMergeStatus =>
+            val state = eachMergeStatus._2
+            if (!state) {
+              finalMergeStatus = false
+            }
+          }
+          if (finalMergeStatus) {
+            /*  CarbonDataMergerUtil
+               .updateLoadMetadataWithMergeStatus(loadsToMerge, cube.getMetaDataFilepath(),
+                 MergedLoadName, carbonLoadModel)*/
+          }
+        }
+      }
+    }
+
     try {
       logger.audit("The data load request has been received.")
 
@@ -279,9 +351,9 @@ object CarbonDataRDDFactory extends Logging {
       }
 
       // Check if any load need to be deleted before loading new data
-      deleteLoadsAndUpdateMetadata(carbonLoadModel, carbonTable, partitioner,
-        hdfsStoreLocation, false,
-        currentRestructNumber)
+      //      deleteLoadsAndUpdateMetadata(carbonLoadModel, cube, partitioner, hdfsStoreLocation,
+      // false,
+      //        currentRestructNumber)
       if (null == carbonLoadModel.getLoadMetadataDetails) {
         readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
       }
@@ -299,7 +371,8 @@ object CarbonDataRDDFactory extends Logging {
         CarbonLoaderUtil
           .deletePartialLoadDataIfExist(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
             carbonLoadModel.getTableName, carbonLoadModel.getTableName, hdfsStoreLocation,
-            currentRestructNumber, currentLoadCount)
+            currentRestructNumber, currentLoadCount
+          )
       } else {
         currentLoadCount += 1
       }
@@ -311,6 +384,10 @@ object CarbonDataRDDFactory extends Logging {
         .getCubeCreationTime(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
       val schemaLastUpdatedTime = CarbonEnv.getInstance(sc).carbonCatalog
         .getSchemaLastUpdatedTime(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
+
+
+      // For Merging of the Carbon Segments.
+      handleSegmentMerging(cubeCreationTime)
 
       // get partition way from configuration
       // val isTableSplitPartition = CarbonProperties.getInstance().getProperty(
@@ -330,7 +407,8 @@ object CarbonDataRDDFactory extends Logging {
           if (carbonLoadModel.isDirectLoad) {
             // get all table Splits, this part means files were divide to different partitions
             splits = CarbonQueryUtil.getTableSplitsForDirectLoad(carbonLoadModel.getFactFilePath,
-              partitioner.nodeList, partitioner.partitionCount)
+              partitioner.nodeList, partitioner.partitionCount
+            )
             // get all partition blocks from file list
             blocksGroupBy = splits.map {
               split =>
@@ -342,12 +420,14 @@ object CarbonDataRDDFactory extends Logging {
                   pathBuilder.substring(0, pathBuilder.size - 1)
                 }
                 (split.getPartition.getUniqueID, SplitUtils.getSplits(pathBuilder.toString(),
-                  sc.sparkContext))
+                  sc.sparkContext
+                ))
             }
           } else {
             // get all table Splits,when come to this, means data have been partition
             splits = CarbonQueryUtil.getTableSplits(carbonLoadModel.getDatabaseName,
-              carbonLoadModel.getTableName, null, partitioner)
+              carbonLoadModel.getTableName, null, partitioner
+            )
             // get all partition blocks from factFilePath/uniqueID/
             blocksGroupBy = splits.map {
               split =>
@@ -382,7 +462,8 @@ object CarbonDataRDDFactory extends Logging {
             classOf[org.apache.hadoop.mapreduce.lib.input.TextInputFormat],
             classOf[LongWritable],
             classOf[Text],
-            hadoopConfiguration)
+            hadoopConfiguration
+          )
           blocksGroupBy = new DummyLoadRDD(newHadoopRDD).collect().groupBy[String](_._1)
             .map { iter => (iter._1, iter._2.map(_._2)) }.toArray
       }
@@ -393,7 +474,8 @@ object CarbonDataRDDFactory extends Logging {
           CarbonDataLoadRDD(sc.sparkContext, new ResultImpl(), carbonLoadModel, storeLocation,
             hdfsStoreLocation, kettleHomePath, partitioner, columinar, currentRestructNumber,
             currentLoadCount, cubeCreationTime, schemaLastUpdatedTime, blocksGroupBy,
-            isTableSplitPartition).collect()
+            isTableSplitPartition
+          ).collect()
       val newStatusMap = scala.collection.mutable.Map.empty[String, String]
       status.foreach { eachLoadStatus =>
         val state = newStatusMap.get(eachLoadStatus._2.getPartitionCount)
@@ -430,21 +512,24 @@ object CarbonDataRDDFactory extends Logging {
         if (isAgg) {
           CarbonLoaderUtil.deleteTable(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
             carbonLoadModel.getTableName, carbonLoadModel.getAggTableName, hdfsStoreLocation,
-            currentRestructNumber)
+            currentRestructNumber
+          )
           message = "Aggregate table creation failure"
         } else {
           val (result, _) = status(0)
           val newSlice = CarbonCommonConstants.LOAD_FOLDER + result
           CarbonLoaderUtil.deleteSlice(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
             carbonLoadModel.getTableName, carbonLoadModel.getTableName, hdfsStoreLocation,
-            currentRestructNumber, newSlice)
+            currentRestructNumber, newSlice
+          )
           val aggTables = carbonTable.getAggregateTablesName
           if (null != aggTables && !aggTables.isEmpty) {
             aggTables.asScala.foreach { aggTableName =>
               CarbonLoaderUtil
                 .deleteSlice(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
                   carbonLoadModel.getTableName, aggTableName, hdfsStoreLocation,
-                  currentRestructNumber, newSlice)
+                  currentRestructNumber, newSlice
+                )
             }
           }
           message = "Dataload failure"
@@ -463,7 +548,7 @@ object CarbonDataRDDFactory extends Logging {
           logInfo("********schema updated**********")
         }
         logger.audit("The data loading is successful.")
-        if (CarbonDataMergerUtil
+        /* if (CarbonDataMergerUtil
           .checkIfLoadMergingRequired(carbonTable.getMetaDataFilepath, carbonLoadModel,
             hdfsStoreLocation, partitioner.partitionCount, currentRestructNumber)) {
 
@@ -506,7 +591,7 @@ object CarbonDataRDDFactory extends Logging {
                   MergedLoadName, carbonLoadModel)
             }
           }
-        }
+        }*/
       }
     }
 
@@ -523,11 +608,11 @@ object CarbonDataRDDFactory extends Logging {
   }
 
   def deleteLoadsAndUpdateMetadata(
-      carbonLoadModel: CarbonLoadModel,
-      cube: CarbonTable, partitioner: Partitioner,
-      hdfsStoreLocation: String,
-      isForceDeletion: Boolean,
-      currentRestructNumber: Integer) {
+    carbonLoadModel: CarbonLoadModel,
+    cube: CarbonTable, partitioner: Partitioner,
+    hdfsStoreLocation: String,
+    isForceDeletion: Boolean,
+    currentRestructNumber: Integer) {
     if (LoadMetadataUtil.isLoadDeletionRequired(carbonLoadModel)) {
       val loadMetadataFilePath = CarbonLoaderUtil
         .extractLoadMetadataFileLocation(carbonLoadModel)
@@ -550,7 +635,8 @@ object CarbonDataRDDFactory extends Logging {
         CarbonLoaderUtil.writeLoadMetadata(
           carbonLoadModel.getCarbonDataLoadSchema,
           carbonLoadModel.getDatabaseName,
-          carbonLoadModel.getTableName, details.toList.asJava)
+          carbonLoadModel.getTableName, details.toList.asJava
+        )
       }
     }
 // TODO:Need to hanlde this scanario for data compaction
@@ -600,7 +686,8 @@ object CarbonDataRDDFactory extends Logging {
           partitioner,
           hdfsStoreLocation,
           isForceDeletion = true,
-          currentRestructNumber)
+          currentRestructNumber
+        )
       }
     }
     finally {

@@ -196,7 +196,7 @@ public class FileStoreSurrogateKeyGenForCSV extends CarbonCSVBasedDimSurrogateKe
     CarbonTablePath carbonTablePath =
         CarbonStorePath.getCarbonTablePath(baseStorePath, carbonTableIdentifier);
     String carbonDataDirectoryPath =
-        carbonTablePath.getCarbonDataDirectoryPath(this.partitionID, this.segmentId);
+        carbonTablePath.getCarbonDataDirectoryPath(this.partitionID, this.segmentId+"");
     carbonDataDirectoryPath =
         carbonDataDirectoryPath + File.separator + taskNo;
     carbonDataDirectoryPath =
