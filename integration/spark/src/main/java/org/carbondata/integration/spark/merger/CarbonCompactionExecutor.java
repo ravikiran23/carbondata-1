@@ -9,6 +9,8 @@ import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
+import org.carbondata.core.carbon.metadata.schema.table.CarbonTable;
+import org.carbondata.core.carbon.metadata.schema.table.TableInfo;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
 import org.carbondata.core.constants.CarbonCommonConstants;
@@ -19,6 +21,7 @@ import org.carbondata.query.carbon.executor.exception.QueryExecutionException;
 import org.carbondata.query.carbon.model.QueryDimension;
 import org.carbondata.query.carbon.model.QueryMeasure;
 import org.carbondata.query.carbon.model.QueryModel;
+import org.carbondata.query.carbon.result.BatchRawResult;
 import org.carbondata.query.carbon.result.Result;
 
 /**
@@ -31,10 +34,11 @@ public class CarbonCompactionExecutor {
   private final String factTableName;
   private final Map<String, Map<String, List<TableBlockInfo>>> segmentMapping;
   private final String storePath;
+  private CarbonTable carbonTable;
 
   public CarbonCompactionExecutor(Map<String, Map<String, List<TableBlockInfo>>> segmentMapping,
       SegmentProperties segmentProperties, String schemaName, String factTableName,
-      String storePath) {
+      String storePath, CarbonTable carbonTable) {
 
     this.segmentMapping = segmentMapping;
 
@@ -45,11 +49,13 @@ public class CarbonCompactionExecutor {
     this.factTableName = factTableName;
 
     this.storePath = storePath;
+
+    this.carbonTable = carbonTable;
   }
 
-  public List<CarbonIterator<Result>> processTableBlocks() {
+  public List<CarbonIterator<BatchRawResult>> processTableBlocks() {
 
-    List<CarbonIterator<Result>> resultList =
+    List<CarbonIterator<BatchRawResult>> resultList =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
     // iterate each seg ID
@@ -69,20 +75,19 @@ public class CarbonCompactionExecutor {
     return resultList;
   }
 
-  public CarbonIterator<Result> executeBlockList(List<TableBlockInfo> blockList) {
+  public CarbonIterator<BatchRawResult> executeBlockList(List<TableBlockInfo> blockList) {
 
     QueryModel model = prepareQueryModel(blockList);
 
     this.queryExecutor = QueryExecutorFactory.getQueryExecutor(model);
-
+    CarbonIterator<BatchRawResult> iter = null;
     try {
-      queryExecutor.execute(model);
+      iter =  queryExecutor.execute(model);
     } catch (QueryExecutionException e) {
       e = null;
     }
 
-    //TODO
-    return null;
+    return iter;
   }
 
   public QueryModel prepareQueryModel(List<TableBlockInfo> blockList) {
@@ -92,6 +97,7 @@ public class CarbonCompactionExecutor {
     model.setTableBlockInfos(blockList);
     model.setCountStarQuery(false);
     model.setDetailQuery(true);
+    model.setForcedDetailRawQuery(true);
     model.setFilterExpressionResolverTree(null);
 
     List<QueryDimension> dims = new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
@@ -105,6 +111,7 @@ public class CarbonCompactionExecutor {
     List<QueryMeasure> msrs = new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
     for (CarbonMeasure carbonMeasure : segmentProperties.getMeasures()) {
       QueryMeasure queryMeasure = new QueryMeasure(carbonMeasure.getColName());
+      msrs.add(queryMeasure);
     }
     model.setQueryMeasures(msrs);
 
@@ -114,6 +121,9 @@ public class CarbonCompactionExecutor {
         new CarbonTableIdentifier(schemaName, factTableName)));
 
     model.setAggTable(false);
+    model.setLimit(-1);
+
+    model.setTable(carbonTable);
 
     return model;
   }
