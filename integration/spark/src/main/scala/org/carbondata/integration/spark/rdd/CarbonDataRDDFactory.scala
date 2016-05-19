@@ -305,9 +305,9 @@ object CarbonDataRDDFactory extends Logging {
           val MergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
           var finalMergeStatus = true
           var tableBlockInfoList: List[TableBlockInfo] = new util.ArrayList[TableBlockInfo]()
-          var schemaName: String = ""
-          var factTableName = ""
-          var storePath = ""
+          var schemaName: String = carbonLoadModel.getDatabaseName
+          var factTableName = carbonLoadModel.getTableName
+          var storePath = hdfsStoreLocation
 
           val mergeStatus = new CarbonMergerRDD(
             sc.sparkContext,
@@ -324,8 +324,7 @@ object CarbonDataRDDFactory extends Logging {
             cubeCreationTime,
             tableBlockInfoList: List[TableBlockInfo],
             schemaName: String,
-            factTableName: String,
-            storePath: String
+            factTableName: String
           ).collect
 
           mergeStatus.foreach { eachMergeStatus =>

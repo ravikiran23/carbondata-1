@@ -109,6 +109,7 @@ public abstract class AbstractFactDataWriter<T> implements CarbonFactDataWriter<
    * thrift column schema
    */
   protected List<org.carbondata.format.ColumnSchema> thriftColumnSchemaList;
+
   /**
    * tabel name
    */
@@ -154,7 +155,7 @@ public abstract class AbstractFactDataWriter<T> implements CarbonFactDataWriter<
   public AbstractFactDataWriter(String storeLocation, int measureCount, int mdKeyLength,
       String tableName, boolean isNodeHolder, IFileManagerComposite fileManager, int[] keyBlockSize,
       boolean isUpdateFact, CarbonDataFileAttributes carbonDataFileAttributes,
-      List<ColumnSchema> columnSchema) {
+      List<ColumnSchema> columnSchema,int[] colCardinality) {
 
     // measure count
     this.measureCount = measureCount;
@@ -196,17 +197,27 @@ public abstract class AbstractFactDataWriter<T> implements CarbonFactDataWriter<
       this.executorService = Executors.newFixedThreadPool(5);
     }
 
-    //TODO: We should delete the levelmetadata file after reading here.
-    this.localCardinality =
-        CarbonMergerUtil.getCardinalityFromLevelMetadata(storeLocation, tableName);
+    // in case of compaction we will pass the cardinality.
+    this.localCardinality = colCardinality;
+
     this.carbonDataFileAttributes = carbonDataFileAttributes;
     CarbonTableIdentifier tableIdentifier = new CarbonTableIdentifier(databaseName, tableName);
     carbonTablePath = CarbonStorePath.getCarbonTablePath(storeLocation, tableIdentifier);
-    List<Integer> cardinalityList = new ArrayList<Integer>();
-    thriftColumnSchemaList =
-        getColumnSchemaListAndCardinality(cardinalityList, localCardinality, columnSchema);
-    localCardinality =
-        ArrayUtils.toPrimitive(cardinalityList.toArray(new Integer[cardinalityList.size()]));
+    //TODO: We should delete the levelmetadata file after reading here.
+    // so only data loading flow will need to read from cardinality file.
+    if (null == this.localCardinality) {
+      this.localCardinality =
+          CarbonMergerUtil.getCardinalityFromLevelMetadata(storeLocation, tableName);
+      List<Integer> cardinalityList = new ArrayList<Integer>();
+      thriftColumnSchemaList =
+          getColumnSchemaListAndCardinality(cardinalityList, localCardinality, columnSchema);
+      localCardinality =
+          ArrayUtils.toPrimitive(cardinalityList.toArray(new Integer[cardinalityList.size()]));
+    } else { // for compaction case
+      List<Integer> cardinalityList = new ArrayList<Integer>();
+      thriftColumnSchemaList =
+          getColumnSchemaListAndCardinality(cardinalityList, localCardinality, columnSchema);
+    }
   }
 
   /**

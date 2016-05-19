@@ -56,6 +56,16 @@ public class BatchRawResult implements CarbonIterator<Object[]> {
     return rows;
   }
 
+
+  public Object[] getRawRow(int counter) {
+    System.out.println("*********** COUNTER ----" +counter);
+    Object[] outputRow = new Object[rows.length];
+    for(int col = 0 ; col < rows.length ; col++) {
+      outputRow[col] = rows[col][counter];
+    }
+    return outputRow;
+  }
+
   /**
    * Returns {@code true} if the iteration has more elements.
    *
@@ -131,5 +141,9 @@ public class BatchRawResult implements CarbonIterator<Object[]> {
 
   public void setQuerySchemaInfo(QuerySchemaInfo querySchemaInfo) {
     this.querySchemaInfo = querySchemaInfo;
+  }
+
+  public int getSize() {
+    return size;
   }
 }

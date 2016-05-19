@@ -267,6 +267,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
    * is of dictionary type or no dictionary time
    */
   private boolean[] dimensionType;
+  private int[] colCardinality;
 
   /**
    * CarbonFactDataHandler constructor
@@ -380,6 +381,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
         carbonTable.getMeasureByTableName(tableName));
     dimensionType =
         CarbonUtil.identifyDimensionType(carbonTable.getDimensionByTableName(tableName));
+    this.colCardinality = carbonFactDataHandlerModel.getColCardinality();
   }
 
   private boolean[] arrangeUniqueBlockType(boolean[] aggKeyBlock) {
@@ -1063,7 +1065,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
     return new CarbonFactDataWriterImplForIntIndexAndAggBlock(storeLocation, measureCount,
         mdKeyLength, tableName, isNodeHolder, fileManager, keyBlockSize, aggKeyBlock, false,
         isComplexTypes(), noDictionaryCount, carbonDataFileAttributes, databaseName,
-        wrapperColumnSchemaList, noDictionaryCount, dimensionType);
+        wrapperColumnSchemaList, noDictionaryCount, dimensionType,colCardinality);
   }
 
   private boolean[] isComplexTypes() {

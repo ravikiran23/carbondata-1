@@ -1,76 +1,134 @@
 package org.carbondata.integration.spark.merger;
 
+import java.io.File;
 import java.util.AbstractQueue;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
+import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
 import org.carbondata.core.constants.CarbonCommonConstants;
 import org.carbondata.core.iterator.CarbonIterator;
-import org.carbondata.core.util.ByteUtil;
+import org.carbondata.core.util.CarbonUtil;
+import org.carbondata.core.util.DataTypeUtil;
+import org.carbondata.core.vo.ColumnGroupModel;
+import org.carbondata.integration.spark.load.CarbonLoadModel;
+import org.carbondata.processing.datatypes.GenericDataType;
 import org.carbondata.processing.merger.exeception.SliceMergerException;
-import org.carbondata.processing.schema.metadata.CarbonColumnarFactMergerInfo;
-import org.carbondata.processing.store.CarbonFactDataHandlerColumnarMerger;
+import org.carbondata.processing.store.CarbonDataFileAttributes;
+import org.carbondata.processing.store.CarbonFactDataHandlerColumnar;
+import org.carbondata.processing.store.CarbonFactDataHandlerModel;
 import org.carbondata.processing.store.CarbonFactHandler;
 import org.carbondata.processing.store.writer.exception.CarbonDataWriterException;
-import org.carbondata.query.carbon.result.Result;
-import org.carbondata.query.carbon.wrappers.ByteArrayWrapper;
+import org.carbondata.query.carbon.result.BatchRawResult;
+import org.carbondata.query.carbon.result.iterator.RawResultIterator;
 
 /**
  *
  */
 public class RowResultMerger {
 
-  CarbonFactHandler dataHandler;
-  private List<CarbonIterator<Result>> blockIteratorList =
-      new ArrayList<CarbonIterator<Result>>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+  private final String schemaName;
+  private final String tableName;
+  private final String tempStoreLocation;
+  private final int measureCount;
+  private CarbonFactHandler dataHandler;
+  private List<RawResultIterator> rawResultIteratorList =
+      new ArrayList<RawResultIterator>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
   private SegmentProperties segprop;
   /**
    * record holder heap
    */
-  private AbstractQueue<CarbonIterator<Result>> recordHolderHeap;
+  private AbstractQueue<RawResultIterator> recordHolderHeap;
 
   private TupleConversionAdapter tupleConvertor;
+  private ColumnGroupModel colGrpStoreModel;
 
-  public RowResultMerger(List<CarbonIterator<Result>> iteratorList, String cubeName,
+  public RowResultMerger(List<CarbonIterator<BatchRawResult>> iteratorList, String cubeName,
       String schemaName, String loadPath, int[] dimlens, int mdKeyLength, String tableName,
-      int currentRestructNumber, SegmentProperties segProp) {
-    this.blockIteratorList = iteratorList;
-    recordHolderHeap = new PriorityQueue<CarbonIterator<Result>>(blockIteratorList.size(),
+      int currentRestructNumber, SegmentProperties segProp, String tempStoreLocation,
+      CarbonLoadModel loadModel,int[] colCardinality) {
+    // this.rawResultIteratorList = iteratorList;
+
+    this.rawResultIteratorList = getRawResultIterator(iteratorList);
+    // create the List of RawResultIterator.
+
+    recordHolderHeap = new PriorityQueue<RawResultIterator>(rawResultIteratorList.size(),
         new RowResultMerger.CarbonMdkeyComparator());
 
     this.segprop = segProp;
-    CarbonColumnarFactMergerInfo carbonColumnarFactMergerInfo = new CarbonColumnarFactMergerInfo();
-    carbonColumnarFactMergerInfo.setCubeName(cubeName);
-    carbonColumnarFactMergerInfo.setSchemaName(schemaName);
-    carbonColumnarFactMergerInfo.setDestinationLocation(loadPath);
-    carbonColumnarFactMergerInfo.setDimLens(dimlens);
-    carbonColumnarFactMergerInfo.setMdkeyLength(mdKeyLength);
-    carbonColumnarFactMergerInfo.setTableName(tableName);
-    carbonColumnarFactMergerInfo.setType(new char['n']);
-    carbonColumnarFactMergerInfo.setMeasureCount(segProp.getMeasures().size());
-    carbonColumnarFactMergerInfo.setIsUpdateFact(false);
-    carbonColumnarFactMergerInfo.setGlobalKeyGen(segProp.getDimensionKeyGenerator());
-    dataHandler = new CarbonFactDataHandlerColumnarMerger(carbonColumnarFactMergerInfo,
-        currentRestructNumber);
+    this.tempStoreLocation = tempStoreLocation;
+
+    if (!new File(tempStoreLocation).mkdirs()) {
+      //LOGGER.error("Error while new File(storeLocation).mkdirs() ");
+    }
+
+    this.schemaName = schemaName;
+    this.tableName = tableName;
+
+    this.measureCount = segprop.getMeasures().size();
+
+    CarbonFactDataHandlerModel carbonFactDataHandlerModel = getCarbonFactDataHandlerModel();
+    carbonFactDataHandlerModel.setPrimitiveDimLens(segprop.getDimColumnsCardinality());
+    CarbonDataFileAttributes carbonDataFileAttributes =
+        new CarbonDataFileAttributes(Integer.parseInt(loadModel.getTaskNo()),
+            loadModel.getFactTimeStamp());
+    carbonFactDataHandlerModel.setCarbonDataFileAttributes(carbonDataFileAttributes);
+    if (segProp.getNumberOfNoDictionaryDimension() > 0
+        || segProp.getComplexDimensions().size() > 0) {
+      carbonFactDataHandlerModel.setMdKeyIndex(measureCount + 1);
+    } else {
+      carbonFactDataHandlerModel.setMdKeyIndex(measureCount);
+    }
+    carbonFactDataHandlerModel.setColCardinality(colCardinality);
+
+    dataHandler = new CarbonFactDataHandlerColumnar(carbonFactDataHandlerModel);
 
     tupleConvertor = new TupleConversionAdapter(segProp);
   }
 
-  public void mergerSlice() throws SliceMergerException {
+  /**
+   * To convert DetailRawQueryResultIterator to RawResultIterators
+   *
+   * @param iteratorList
+   * @return
+   */
+  private List<RawResultIterator> getRawResultIterator(
+      List<CarbonIterator<BatchRawResult>> iteratorList) {
+
+    List<RawResultIterator> rawResultIteratorList =
+        new ArrayList<RawResultIterator>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+    for (CarbonIterator<BatchRawResult> itr : iteratorList) {
+      RawResultIterator rawResultIterator = new RawResultIterator(itr);
+      rawResultIteratorList.add(rawResultIterator);
+    }
+
+    return rawResultIteratorList;
+  }
+
+  /**
+   * Merge function
+   *
+   * @throws SliceMergerException
+   */
+  public boolean mergerSlice() throws SliceMergerException {
+    boolean mergeStatus = false;
     int index = 0;
     try {
 
       dataHandler.initialise();
 
       // add all iterators to the queue
-      for (CarbonIterator<Result> leaftTupleIterator : this.blockIteratorList) {
+      for (RawResultIterator leaftTupleIterator : this.rawResultIteratorList) {
         this.recordHolderHeap.add(leaftTupleIterator);
         index++;
       }
-      CarbonIterator<Result> poll = null;
+      RawResultIterator poll = null;
       while (index > 1) {
         // poll the top record
         poll = this.recordHolderHeap.poll();
@@ -82,7 +140,6 @@ public class RowResultMerger {
           index--;
           continue;
         }
-        // poll.fetchNextData();
         // add record to heap
         this.recordHolderHeap.add(poll);
       }
@@ -100,11 +157,11 @@ public class RowResultMerger {
       this.dataHandler.finish();
 
     } catch (CarbonDataWriterException e) {
-      throw new SliceMergerException(
-          "Problem while getting the file channel for Destination file: ", e);
+      return  mergeStatus;
     } finally {
       this.dataHandler.closeHandler();
     }
+    return true;
   }
 
   /**
@@ -112,23 +169,58 @@ public class RowResultMerger {
    *
    * @throws SliceMergerException
    */
-  protected void addRow(Result carbonTuple) throws SliceMergerException {
-    Object[] row;
+  protected void addRow(Object[] carbonTuple) throws SliceMergerException {
+    Object[] rowInWritableFormat;
 
-    row = tupleConvertor.getObjectArray(carbonTuple);
-
+    rowInWritableFormat = tupleConvertor.getObjectArray(carbonTuple);
     try {
-      this.dataHandler.addDataToStore(row);
+      this.dataHandler.addDataToStore(rowInWritableFormat);
     } catch (CarbonDataWriterException e) {
       throw new SliceMergerException("Problem in merging the slice", e);
     }
   }
 
-  private class CarbonMdkeyComparator implements Comparator<CarbonIterator<Result>> {
+  /**
+   * This method will create a model object for carbon fact data handler
+   *
+   * @return
+   */
+  private CarbonFactDataHandlerModel getCarbonFactDataHandlerModel() {
+    CarbonFactDataHandlerModel carbonFactDataHandlerModel = new CarbonFactDataHandlerModel();
+    carbonFactDataHandlerModel.setDatabaseName(schemaName);
+    carbonFactDataHandlerModel.setTableName(tableName);
+    carbonFactDataHandlerModel.setMeasureCount(segprop.getMeasures().size());
+    carbonFactDataHandlerModel
+        .setMdKeyLength(segprop.getDimensionKeyGenerator().getKeySizeInBytes());
+    carbonFactDataHandlerModel.setStoreLocation(tempStoreLocation);
+    carbonFactDataHandlerModel.setDimLens(segprop.getDimColumnsCardinality());
+    carbonFactDataHandlerModel.setNoDictionaryCount(segprop.getNumberOfNoDictionaryDimension());
+    carbonFactDataHandlerModel.setDimensionCount(segprop.getDimensions().size());
+    //TO-DO Need to handle complex types here .
+    Map<Integer, GenericDataType> complexIndexMap =
+        new HashMap<Integer, GenericDataType>(segprop.getComplexDimensions().size());
+    carbonFactDataHandlerModel.setComplexIndexMap(complexIndexMap);
+    this.colGrpStoreModel =
+        CarbonUtil.getColGroupModel(segprop.getDimColumnsCardinality(), segprop.getColumnGroups());
+    carbonFactDataHandlerModel.setColGrpModel(colGrpStoreModel);
+    carbonFactDataHandlerModel.setDataWritingRequest(true);
 
-    @Override public int compare(CarbonIterator<Result> o1, CarbonIterator<Result> o2) {
+    char[] aggType = new char[segprop.getMeasures().size()];
+    Arrays.fill(aggType, 'n');
+    int i = 0;
+    for (CarbonMeasure msr : segprop.getMeasures()) {
+      aggType[i++] = DataTypeUtil.getAggType(msr.getDataType().toString());
+    }
+    carbonFactDataHandlerModel.setAggType(aggType);
+    carbonFactDataHandlerModel.setFactDimLens(segprop.getDimColumnsCardinality());
+    return carbonFactDataHandlerModel;
+  }
 
-      ByteArrayWrapper key1 = o1.next().getKey();
+  private class CarbonMdkeyComparator implements Comparator<RawResultIterator> {
+
+    @Override public int compare(RawResultIterator o1, RawResultIterator o2) {
+
+      /*ByteArrayWrapper key1 = o1.next().getKey();
       ByteArrayWrapper key2 = o2.next().getKey();
       int compareResult = 0;
       int[] columnValueSizes = segprop.getEachDimColumnValueSize();
@@ -156,7 +248,7 @@ public class RowResultMerger {
         if (0 != compareResult) {
           return compareResult;
         }
-      }
+      }*/
       return 0;
     }
   }

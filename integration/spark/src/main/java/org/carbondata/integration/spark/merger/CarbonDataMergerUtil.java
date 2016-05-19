@@ -346,8 +346,14 @@ public final class CarbonDataMergerUtil {
   public static String getMergedLoadName(List<LoadMetadataDetails> segmentsToBeMergedList) {
     String firstSegmentName = segmentsToBeMergedList.get(0).getLoadName();
 
+    // check if segment is already merged or not.
+    if(null != segmentsToBeMergedList.get(0).getMergedLoadName() )
+    {
+      firstSegmentName = segmentsToBeMergedList.get(0).getMergedLoadName();
+    }
+
     double segmentNumber = Double.parseDouble(
-        firstSegmentName.substring(firstSegmentName.lastIndexOf('_'), firstSegmentName.length()));
+        firstSegmentName);
 
     // increment segment number by 0.1
 

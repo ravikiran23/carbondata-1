@@ -55,9 +55,10 @@ public class CarbonFactDataWriterImplForIntIndexAndAggBlock extends AbstractFact
       int[] keyBlockSize, boolean[] aggBlocks, boolean isUpdateFact, boolean[] isComplexType,
       int NoDictionaryCount, CarbonDataFileAttributes carbonDataFileAttributes, String databaseName,
       List<ColumnSchema> wrapperColumnSchemaList, int numberOfNoDictionaryColumn,
-      boolean[] isDictionaryColumn) {
+      boolean[] dimensionType,int[] colCardinality) {
     this(storeLocation, measureCount, mdKeyLength, tableName, isNodeHolder, fileManager,
-        keyBlockSize, aggBlocks, isUpdateFact, carbonDataFileAttributes, wrapperColumnSchemaList);
+        keyBlockSize, aggBlocks, isUpdateFact, carbonDataFileAttributes, wrapperColumnSchemaList,
+        colCardinality);
     this.isComplexType = isComplexType;
     this.databaseName = databaseName;
     this.numberOfNoDictionaryColumn = numberOfNoDictionaryColumn;
@@ -68,9 +69,10 @@ public class CarbonFactDataWriterImplForIntIndexAndAggBlock extends AbstractFact
       int mdKeyLength, String tableName, boolean isNodeHolder, IFileManagerComposite fileManager,
       int[] keyBlockSize, boolean[] aggBlocks, boolean isUpdateFact,
       CarbonDataFileAttributes carbonDataFileAttributes,
-      List<ColumnSchema> wrapperColumnSchemaList) {
+      List<ColumnSchema> wrapperColumnSchemaList,int[] colCardinality) {
     super(storeLocation, measureCount, mdKeyLength, tableName, isNodeHolder, fileManager,
-        keyBlockSize, isUpdateFact, carbonDataFileAttributes, wrapperColumnSchemaList);
+        keyBlockSize, isUpdateFact, carbonDataFileAttributes, wrapperColumnSchemaList,
+        colCardinality);
     this.aggBlocks = aggBlocks;
     this.numberCompressor = new NumberCompressor(Integer.parseInt(CarbonProperties.getInstance()
         .getProperty(CarbonCommonConstants.BLOCKLET_SIZE,

@@ -612,7 +612,7 @@ public class CarbonFactDataHandlerColumnarMerger implements CarbonFactHandler {
       int[] keyBlockSize, boolean isUpdateFact) {
     return new CarbonFactDataWriterImplForIntIndexAndAggBlock(storeLocation, measureCount,
         mdKeyLength, tableName, isNodeHolder, fileManager, keyBlockSize, aggKeyBlock, isUpdateFact,
-        null, null);
+        null, null,null);
   }
 
   public void copyToHDFS(String loadPath) throws CarbonDataWriterException {
