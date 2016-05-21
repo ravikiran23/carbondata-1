@@ -140,7 +140,7 @@ class CarbonQueryRDD[K, V](
   override def compute(thepartition: Partition, context: TaskContext): Iterator[(K, V)] = {
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
     val iter = new Iterator[(K, V)] {
-      var rowIterator: CarbonIterator[RowResult] = _
+      var rowIterator: CarbonIterator[_] = _
       var queryStartTime: Long = 0
       try {
         val carbonSparkPartition = thepartition.asInstanceOf[CarbonSparkPartition]
@@ -193,8 +193,8 @@ class CarbonQueryRDD[K, V](
         }
         havePair = false
         val row = rowIterator.next()
-        val key = row.getKey
-        val value = row.getValue
+        val key = row.asInstanceOf[RowResult].getKey()
+        val value = row.asInstanceOf[RowResult].getValue()
         keyClass.getKey(key, value)
       }
 

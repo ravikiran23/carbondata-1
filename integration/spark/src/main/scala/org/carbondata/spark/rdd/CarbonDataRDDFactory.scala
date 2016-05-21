@@ -19,21 +19,24 @@
 package org.carbondata.spark.rdd
 
 import java.util
-import java.util.List
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
+
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.io.{LongWritable, Text}
-import org.apache.spark.rdd.{DummyLoadRDD, NewHadoopRDD}
-import org.apache.spark.sql.execution.command.Partitioner
-import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
-import org.apache.spark.util.{FileUtils, SplitUtils}
 import org.apache.spark.{Logging, SparkContext}
+import org.apache.spark.rdd.{DummyLoadRDD, NewHadoopRDD}
+import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
+import org.apache.spark.sql.cubemodel.Partitioner
+import org.apache.spark.sql.hive.HiveContext
+import org.apache.spark.sql.execution.command.Partitioner
+import org.apache.spark.util.{FileUtils, SplitUtils}
+
 import org.carbondata.common.logging.LogServiceFactory
+import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
-import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.load.{BlockDetails, LoadMetadataDetails}
@@ -52,13 +55,10 @@ import org.carbondata.spark.merger.CarbonDataMergerUtil
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable.{ArrayBuffer, ListBuffer}
-
 /**
-  * This is the factory class which can create different RDD depends on user needs.
-  *
-  */
+ * This is the factory class which can create different RDD depends on user needs.
+ *
+ */
 object CarbonDataRDDFactory extends Logging {
 
   val logger = LogServiceFactory.getLogService(CarbonDataRDDFactory.getClass.getName)
@@ -302,10 +302,12 @@ object CarbonDataRDDFactory extends Logging {
         if (loadsToMerge.size() > 1) {
           val MergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
           var finalMergeStatus = true
-          var tableBlockInfoList: List[TableBlockInfo] = new util.ArrayList[TableBlockInfo]()
+          var tableBlockInfoList: util.List[TableBlockInfo] = new util.ArrayList[TableBlockInfo]()
           var schemaName: String = carbonLoadModel.getDatabaseName
           var factTableName = carbonLoadModel.getTableName
           var storePath = hdfsStoreLocation
+          var commaSeparatedValidSegments: String = CarbonDataMergerUtil
+            .getValidSegments(loadsToMerge)
 
           val mergeStatus = new CarbonMergerRDD(
             sc.sparkContext,
@@ -320,9 +322,9 @@ object CarbonDataRDDFactory extends Logging {
             MergedLoadName,
             kettleHomePath,
             cubeCreationTime,
-            tableBlockInfoList: List[TableBlockInfo],
             schemaName: String,
-            factTableName: String
+            factTableName: String,
+            commaSeparatedValidSegments: String
           ).collect
 
           mergeStatus.foreach { eachMergeStatus =>
@@ -332,9 +334,9 @@ object CarbonDataRDDFactory extends Logging {
             }
           }
           if (finalMergeStatus) {
-            /*  CarbonDataMergerUtil
+            CarbonDataMergerUtil
                .updateLoadMetadataWithMergeStatus(loadsToMerge, cube.getMetaDataFilepath(),
-                 MergedLoadName, carbonLoadModel)*/
+                 MergedLoadName, carbonLoadModel)
           }
         }
       }
@@ -590,7 +592,7 @@ object CarbonDataRDDFactory extends Logging {
                   MergedLoadName, carbonLoadModel)
             }
           }
-        }*/
+        } */
       }
     }
 
@@ -642,6 +644,12 @@ object CarbonDataRDDFactory extends Logging {
  //   CarbonDataMergerUtil
  //     .cleanUnwantedMergeLoadFolder(carbonLoadModel, partitioner.partitionCount,
  //    hdfsStoreLocation, isForceDeletion, currentRestructNumber)*/
+
+    // todo add condition if mergin is enabled do this
+     /* CarbonDataMergerUtil
+        .cleanUnwantedMergeLoadFolder(carbonLoadModel, partitioner.partitionCount,
+        hdfsStoreLocation,
+          isForceDeletion, currentRestructNumber) */
 
   }
 

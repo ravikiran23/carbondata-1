@@ -58,7 +58,6 @@ public class BatchRawResult implements CarbonIterator<Object[]> {
 
 
   public Object[] getRawRow(int counter) {
-    System.out.println("*********** COUNTER ----" +counter);
     Object[] outputRow = new Object[rows.length];
     for(int col = 0 ; col < rows.length ; col++) {
       outputRow[col] = rows[col][counter];

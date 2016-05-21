@@ -89,12 +89,12 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * Set List of segments to access
    */
-  public static void setSegmentsToAccess(Job job, List<Integer> segmentNosList) {
+  public static void setSegmentsToAccess(Job job, List<String> segmentNosList) {
 
     //serialize to comma separated string
     StringBuilder stringSegmentsBuilder = new StringBuilder();
     for (int i = 0; i < segmentNosList.size(); i++) {
-      Integer segmentNo = segmentNosList.get(i);
+      String segmentNo = segmentNosList.get(i);
       stringSegmentsBuilder.append(segmentNo);
       if (i < segmentNosList.size() - 1) {
         stringSegmentsBuilder.append(",");
@@ -451,7 +451,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     String segmentString = job.getConfiguration().get(INPUT_SEGMENT_NUMBERS, "");
     // if no segments
     if(segmentString.trim().isEmpty()){
-      return new int[0];
+      return new String[0];
     }
 
     String[] segments = segmentString.split(",");

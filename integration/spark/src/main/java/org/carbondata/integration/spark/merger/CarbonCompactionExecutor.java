@@ -10,7 +10,6 @@ import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable;
-import org.carbondata.core.carbon.metadata.schema.table.TableInfo;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
 import org.carbondata.core.constants.CarbonCommonConstants;
@@ -22,7 +21,6 @@ import org.carbondata.query.carbon.model.QueryDimension;
 import org.carbondata.query.carbon.model.QueryMeasure;
 import org.carbondata.query.carbon.model.QueryModel;
 import org.carbondata.query.carbon.result.BatchRawResult;
-import org.carbondata.query.carbon.result.Result;
 
 /**
  */
@@ -82,7 +80,7 @@ public class CarbonCompactionExecutor {
     this.queryExecutor = QueryExecutorFactory.getQueryExecutor(model);
     CarbonIterator<BatchRawResult> iter = null;
     try {
-      iter =  queryExecutor.execute(model);
+      iter = queryExecutor.execute(model);
     } catch (QueryExecutionException e) {
       e = null;
     }
