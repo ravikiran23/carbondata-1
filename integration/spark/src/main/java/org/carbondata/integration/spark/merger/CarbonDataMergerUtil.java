@@ -28,11 +28,14 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
+import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable;
 import org.carbondata.core.constants.CarbonCommonConstants;
 import org.carbondata.core.datastorage.store.filesystem.CarbonFile;
@@ -347,13 +350,11 @@ public final class CarbonDataMergerUtil {
     String firstSegmentName = segmentsToBeMergedList.get(0).getLoadName();
 
     // check if segment is already merged or not.
-    if(null != segmentsToBeMergedList.get(0).getMergedLoadName() )
-    {
+    if (null != segmentsToBeMergedList.get(0).getMergedLoadName()) {
       firstSegmentName = segmentsToBeMergedList.get(0).getMergedLoadName();
     }
 
-    double segmentNumber = Double.parseDouble(
-        firstSegmentName);
+    float segmentNumber = Float.parseFloat(firstSegmentName);
 
     // increment segment number by 0.1
 
@@ -363,7 +364,13 @@ public final class CarbonDataMergerUtil {
 
   }
 
-  public static void updateLoadMetadataWithMergeStatus(List<String> loadsToMerge,
+  /**
+   * @param loadsToMerge
+   * @param metaDataFilepath
+   * @param MergedLoadName
+   * @param carbonLoadModel
+   */
+  public static void updateLoadMetadataWithMergeStatus(List<LoadMetadataDetails> loadsToMerge,
       String metaDataFilepath, String MergedLoadName, CarbonLoadModel carbonLoadModel) {
     LoadMetadataDetails[] loadDetails = CarbonUtil.readLoadMetadata(metaDataFilepath);
 
@@ -372,25 +379,26 @@ public final class CarbonDataMergerUtil {
     for (LoadMetadataDetails loadDetail : loadDetails) {
 
       if (null != loadDetail.getMergedLoadName()) {
-        if (loadsToMerge.contains(loadDetail.getMergedLoadName()) && first) {
-          loadDetail.setMergedLoadName(MergedLoadName);
+        if (loadsToMerge.contains(loadDetail) && first) {
+          loadDetail.setMergedLoadName(MergedLoadName.substring(
+              MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
+                  + CarbonCommonConstants.LOAD_FOLDER.length(), MergedLoadName.length()));
           first = false;
         } else {
           continue;
         }
-      } else if (loadsToMerge.contains(loadDetail.getLoadName())) {
+      } else if (loadsToMerge.contains(loadDetail)) {
         if (first) {
-          loadDetail.setMergedLoadName(MergedLoadName);
+          loadDetail.setMergedLoadName(MergedLoadName.substring(
+              MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
+                  + CarbonCommonConstants.LOAD_FOLDER.length(), MergedLoadName.length()));
           first = false;
         } else {
           loadDetail.setLoadStatus(CarbonCommonConstants.MARKED_FOR_DELETE);
           loadDetail.setModificationOrdeletionTimesStamp(CarbonLoaderUtil.readCurrentTime());
         }
-
       }
-
     }
-
     try {
       CarbonLoaderUtil.writeLoadMetadata(carbonLoadModel.getCarbonDataLoadSchema(),
           carbonLoadModel.getDatabaseName(), carbonLoadModel.getTableName(),
@@ -602,15 +610,8 @@ public final class CarbonDataMergerUtil {
       for (LoadMetadataDetails segment : listOfSegmentsBelowThresholdSize) {
 
         if (first) {
-          String baselineLoadStartTime = segment.getLoadStartTime();
-          SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
-          try {
-            segDate1 = sdf.parse(baselineLoadStartTime);
-          } catch (ParseException e) {
-            LOGGER.error("Error while parsing segment start time"+ e.getMessage());
-          }
+          segDate1 = initializeFirstSegment(loadsOfSameDate, segDate1, segment);
           first = false;
-          loadsOfSameDate.add(segment);
           continue;
         }
         String segmentDate = segment.getLoadStartTime();
@@ -619,7 +620,7 @@ public final class CarbonDataMergerUtil {
         try {
           segDate2 = sdf.parse(segmentDate);
         } catch (ParseException e) {
-          LOGGER.error("Error while parsing segment start time"+ e.getMessage());
+          LOGGER.error("Error while parsing segment start time" + e.getMessage());
         }
 
         if (isTwoDatesPresentInRequiredRange(segDate1, segDate2, numberOfDaysAllowedToMerge)) {
@@ -628,8 +629,9 @@ public final class CarbonDataMergerUtil {
         // if the load is beyond merged date.
         // then reset everything and continue search for loads.
         else if (loadsOfSameDate.size() < 2) {
-          first = true;
           loadsOfSameDate.removeAll(loadsOfSameDate);
+          // need to add the next segment as first and  to check further
+          segDate1 = initializeFirstSegment(loadsOfSameDate, segDate1, segment);
         } else { // case where a load is beyond merge date and there is at least 2 loads to merge.
           break;
         }
@@ -639,6 +641,25 @@ public final class CarbonDataMergerUtil {
     }
 
     return loadsOfSameDate;
+  }
+
+  /**
+   * @param loadsOfSameDate
+   * @param segDate1
+   * @param segment
+   * @return
+   */
+  private static Date initializeFirstSegment(List<LoadMetadataDetails> loadsOfSameDate,
+      Date segDate1, LoadMetadataDetails segment) {
+    String baselineLoadStartTime = segment.getLoadStartTime();
+    SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
+    try {
+      segDate1 = sdf.parse(baselineLoadStartTime);
+    } catch (ParseException e) {
+      LOGGER.error("Error while parsing segment start time" + e.getMessage());
+    }
+    loadsOfSameDate.add(segment);
+    return segDate1;
   }
 
   /**
@@ -659,7 +680,7 @@ public final class CarbonDataMergerUtil {
 
     long diff = cal2.getTimeInMillis() - cal1.getTimeInMillis();
 
-    if ((diff / (24 * 60 * 60 * 1000)) <= numberOfDaysAllowedToMerge) {
+    if ((diff / (24 * 60 * 60 * 1000)) < numberOfDaysAllowedToMerge) {
       return true;
 
     }
@@ -851,5 +872,55 @@ public final class CarbonDataMergerUtil {
 
     }
     return compactionSize;
+  }
+
+  /**
+   * For getting the comma separated valid segments for merging.
+   *
+   * @return
+   */
+  public static String getValidSegments(List<LoadMetadataDetails> loadMetadataDetails) {
+    StringBuilder builder = new StringBuilder();
+    for (LoadMetadataDetails segment : loadMetadataDetails) {
+      //check if this load is an already merged load.
+      if (null != segment.getMergedLoadName()) {
+        builder.append(segment.getMergedLoadName() + ",");
+      } else {
+        builder.append(segment.getLoadName() + ",");
+      }
+    }
+    builder.deleteCharAt(builder.length() - 1);
+    return builder.toString();
+  }
+
+  /**
+   * Combining the list of maps to one map.
+   *
+   * @param mapsOfNodeBlockMapping
+   * @return
+   */
+  public static Map<String, List<TableBlockInfo>> combineNodeBlockMaps(
+      List<Map<String, List<TableBlockInfo>>> mapsOfNodeBlockMapping) {
+
+    Map<String, List<TableBlockInfo>> combinedMap =
+        new HashMap<String, List<TableBlockInfo>>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+    // traverse list of maps.
+    for (Map<String, List<TableBlockInfo>> eachMap : mapsOfNodeBlockMapping) {
+      // traverse inside each map.
+      for (Map.Entry<String, List<TableBlockInfo>> eachEntry : eachMap.entrySet()) {
+
+        String node = eachEntry.getKey();
+        List<TableBlockInfo> blocks = eachEntry.getValue();
+
+        // if already that node detail exist in the combined map.
+        if (null != combinedMap.get(node)) {
+          List<TableBlockInfo> blocksAlreadyPresent = combinedMap.get(node);
+          blocksAlreadyPresent.addAll(blocks);
+        } else { // if its not present in map then put to map.
+          combinedMap.put(node, blocks);
+        }
+      }
+    }
+    return combinedMap;
   }
 }

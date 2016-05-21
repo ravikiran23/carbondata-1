@@ -55,7 +55,7 @@ public class CarbonFactDataWriterImplForIntIndexAndAggBlock extends AbstractFact
       int[] keyBlockSize, boolean[] aggBlocks, boolean isUpdateFact, boolean[] isComplexType,
       int NoDictionaryCount, CarbonDataFileAttributes carbonDataFileAttributes, String databaseName,
       List<ColumnSchema> wrapperColumnSchemaList, int numberOfNoDictionaryColumn,
-      boolean[] dimensionType,int[] colCardinality) {
+      boolean[] isDictionaryColumn,int[] colCardinality) {
     this(storeLocation, measureCount, mdKeyLength, tableName, isNodeHolder, fileManager,
         keyBlockSize, aggBlocks, isUpdateFact, carbonDataFileAttributes, wrapperColumnSchemaList,
         colCardinality);

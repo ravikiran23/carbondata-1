@@ -51,6 +51,21 @@ public class RawResultIterator implements CarbonIterator<Object[]> {
 
   }
 
+  /**
+   * for fetching the row with out incrementing counter.
+   * @return
+   */
+  public Object[] fetch(){
+    if(hasNext())
+    {
+      return batch.getRawRow(counter);
+    }
+    else
+    {
+      return null;
+    }
+  }
+
   private boolean checkIfBatchIsProcessedCompletely(BatchRawResult batch){
     if(counter < batch.getSize())
     {

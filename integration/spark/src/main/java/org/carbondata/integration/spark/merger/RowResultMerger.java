@@ -14,6 +14,7 @@ import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
 import org.carbondata.core.constants.CarbonCommonConstants;
 import org.carbondata.core.iterator.CarbonIterator;
+import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.core.util.DataTypeUtil;
 import org.carbondata.core.vo.ColumnGroupModel;
@@ -27,6 +28,7 @@ import org.carbondata.processing.store.CarbonFactHandler;
 import org.carbondata.processing.store.writer.exception.CarbonDataWriterException;
 import org.carbondata.query.carbon.result.BatchRawResult;
 import org.carbondata.query.carbon.result.iterator.RawResultIterator;
+import org.carbondata.query.carbon.wrappers.ByteArrayWrapper;
 
 /**
  *
@@ -220,8 +222,14 @@ public class RowResultMerger {
 
     @Override public int compare(RawResultIterator o1, RawResultIterator o2) {
 
-      /*ByteArrayWrapper key1 = o1.next().getKey();
-      ByteArrayWrapper key2 = o2.next().getKey();
+      Object[] row1 = o1.fetch();
+      Object[] row2 = o2.fetch();
+      if(null == row1 || null == row2 )
+      {
+        return 0;
+      }
+      ByteArrayWrapper key1 = (ByteArrayWrapper) row1[0];
+      ByteArrayWrapper key2 = (ByteArrayWrapper) row2[0];
       int compareResult = 0;
       int[] columnValueSizes = segprop.getEachDimColumnValueSize();
       int dictionaryKeyOffset = 0;
@@ -248,7 +256,7 @@ public class RowResultMerger {
         if (0 != compareResult) {
           return compareResult;
         }
-      }*/
+      }
       return 0;
     }
   }

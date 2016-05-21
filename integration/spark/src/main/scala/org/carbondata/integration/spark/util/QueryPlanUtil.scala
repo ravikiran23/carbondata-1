@@ -17,6 +17,8 @@
 
 package org.carbondata.integration.spark.util
 
+import java.lang
+
 import scala.collection.JavaConverters._
 
 import org.apache.hadoop.conf.Configuration
@@ -48,8 +50,8 @@ object QueryPlanUtil {
 
     val validSegments = new SegmentStatusManager(absoluteTableIdentifier).getValidSegments;
     val validSegmentNos =
-      validSegments.listOfValidSegments.asScala.map(x => new Integer(Integer.parseInt(x)))
-    CarbonInputFormat.setSegmentsToAccess(job, validSegmentNos.asJava)
+      validSegments.listOfValidSegments
+    CarbonInputFormat.setSegmentsToAccess(job, validSegmentNos)
     (carbonInputFormat, job)
   }
 }

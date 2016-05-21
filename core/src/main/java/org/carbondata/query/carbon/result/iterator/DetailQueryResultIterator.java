@@ -59,7 +59,7 @@ public class DetailQueryResultIterator extends AbstractDetailQueryResultIterator
     this.queryResultPreparator = new QueryResultPreparatorImpl(executerProperties, queryModel);
   }
 
-  private void intialiseInfos() {
+  /*private void intialiseInfos() {
     this.totalNumberBlockletPerSlice = new long[blockExecutionInfos.size()];
     this.numberOfBlockletExecutedPerBlock = new long[blockExecutionInfos.size()];
     int index = -1;
@@ -78,11 +78,11 @@ public class DetailQueryResultIterator extends AbstractDetailQueryResultIterator
       blockInfo.setNumberOfBlockToScan(1);
     }
 
-  }
+  }*/
 
-  @Override public boolean hasNext() {
+  /*@Override public boolean hasNext() {
     return currentCounter < totalNumberOfNode;
-  }
+  }*/
 
   @Override public BatchResult next() {
     updateSliceIndexToBeExecuted();
