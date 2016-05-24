@@ -550,8 +550,8 @@ public class MDKeyGenStepMeta extends BaseStepMeta implements StepMetaInterface 
    *
    * @return
    */
-  public int getSegmentId() {
-    return Integer.parseInt(segmentId);
+  public String getSegmentId() {
+    return segmentId;
   }
 
   /**

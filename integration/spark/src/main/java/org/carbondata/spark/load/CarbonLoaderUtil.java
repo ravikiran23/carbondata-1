@@ -429,7 +429,7 @@ public final class CarbonLoaderUtil {
     // form local store location
     String localStoreLocation = getStoreLocation(CarbonProperties.getInstance()
             .getProperty(tempLocationKey, CarbonCommonConstants.STORE_LOCATION_DEFAULT_VAL),
-        carbonTableIdentifier, Integer.parseInt(segmentId), loadModel.getPartitionId());
+        carbonTableIdentifier, segmentId, loadModel.getPartitionId());
     try {
       CarbonUtil.deleteFoldersAndFiles(new File[] { new File(localStoreLocation) });
     } catch (CarbonUtilException e) {

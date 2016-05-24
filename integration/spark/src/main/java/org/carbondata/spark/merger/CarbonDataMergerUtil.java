@@ -745,7 +745,10 @@ public final class CarbonDataMergerUtil {
         // reset everything as do only continuous merge.
         totalLength = 0;
         segmentsToBeMerged.removeAll(segmentsToBeMerged);
-        continue;
+
+        // add the latest one to the list to check for next segments.
+        segmentsToBeMerged.add(segment);
+        totalLength = sizeOfOneSegmentAcrossPartition;
       }
       // after all partitions
       sizeOfOneSegmentAcrossPartition = 0;
@@ -833,9 +836,11 @@ public final class CarbonDataMergerUtil {
         validList.remove(validList.size() - 1);
 
       }
+      return validList;
     }
 
-    return validList;
+    // case where there is no 2 loads available for merging.
+    return new ArrayList<LoadMetadataDetails>(0);
   }
 
   /**

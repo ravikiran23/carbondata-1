@@ -98,10 +98,7 @@ class CarbonMergerRDD[K, V](
       val dataFileMetadataSegMapping: java.util.Map[String, List[DataFileFooter]] =
         CarbonCompactionUtil.createDataFileMappingForSegments(tableBlockInfoList)
 
-
-      // val cc:CarbonCompactor = new CarbonCompactor(dataFileMetadataSegMapping)
-
-      // cc.process()
+      carbonLoadModel.setFactStoreLocation(hdfsStoreLocation)
 
       // taking the last table block info for getting the segment properties.
       val listMetadata = dataFileMetadataSegMapping.get(tableBlockInfoList.get
@@ -123,14 +120,21 @@ class CarbonMergerRDD[K, V](
       // fire a query and get the results.
       val result2: util.List[CarbonIterator[BatchRawResult]] = exec.processTableBlocks();
 
+      val mergeNumber = mergedLoadName.substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
+        CarbonCommonConstants.LOAD_FOLDER.length(),mergedLoadName.length())
+
+     /* val mergeNumber = mergedLoadName.substring
+      (mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
+        CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length())*/
+
+
       val tempStoreLoc = CarbonCompactionUtil.getTempLocation(schemaName, factTableName,
-        "0", mergedLoadName.substring
-        (mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
-          CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()
-        ),
+        "0", mergeNumber,
         carbonLoadModel.getTaskNo
       )
 
+      carbonLoadModel.setSegmentId(mergeNumber);
+      carbonLoadModel.setPartitionId(theSplit.index.toString);
       val merger = new RowResultMerger(result2,
         factTableName,
         schemaName,

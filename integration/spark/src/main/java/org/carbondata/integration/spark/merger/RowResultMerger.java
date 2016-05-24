@@ -10,8 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
+import org.carbondata.core.carbon.path.CarbonStorePath;
+import org.carbondata.core.carbon.path.CarbonTablePath;
 import org.carbondata.core.constants.CarbonCommonConstants;
 import org.carbondata.core.iterator.CarbonIterator;
 import org.carbondata.core.util.ByteUtil;
@@ -39,6 +42,7 @@ public class RowResultMerger {
   private final String tableName;
   private final String tempStoreLocation;
   private final int measureCount;
+  private final String factStoreLocation;
   private CarbonFactHandler dataHandler;
   private List<RawResultIterator> rawResultIteratorList =
       new ArrayList<RawResultIterator>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
@@ -66,6 +70,8 @@ public class RowResultMerger {
     this.segprop = segProp;
     this.tempStoreLocation = tempStoreLocation;
 
+    this.factStoreLocation = loadModel.getFactStoreLocation();
+
     if (!new File(tempStoreLocation).mkdirs()) {
       //LOGGER.error("Error while new File(storeLocation).mkdirs() ");
     }
@@ -75,7 +81,7 @@ public class RowResultMerger {
 
     this.measureCount = segprop.getMeasures().size();
 
-    CarbonFactDataHandlerModel carbonFactDataHandlerModel = getCarbonFactDataHandlerModel();
+    CarbonFactDataHandlerModel carbonFactDataHandlerModel = getCarbonFactDataHandlerModel(loadModel);
     carbonFactDataHandlerModel.setPrimitiveDimLens(segprop.getDimColumnsCardinality());
     CarbonDataFileAttributes carbonDataFileAttributes =
         new CarbonDataFileAttributes(Integer.parseInt(loadModel.getTaskNo()),
@@ -161,7 +167,11 @@ public class RowResultMerger {
     } catch (CarbonDataWriterException e) {
       return  mergeStatus;
     } finally {
-      this.dataHandler.closeHandler();
+      try {
+        this.dataHandler.closeHandler();
+      } catch (CarbonDataWriterException e) {
+        return false;
+      }
     }
     return true;
   }
@@ -186,8 +196,9 @@ public class RowResultMerger {
    * This method will create a model object for carbon fact data handler
    *
    * @return
+   * @param loadModel
    */
-  private CarbonFactDataHandlerModel getCarbonFactDataHandlerModel() {
+  private CarbonFactDataHandlerModel getCarbonFactDataHandlerModel(CarbonLoadModel loadModel) {
     CarbonFactDataHandlerModel carbonFactDataHandlerModel = new CarbonFactDataHandlerModel();
     carbonFactDataHandlerModel.setDatabaseName(schemaName);
     carbonFactDataHandlerModel.setTableName(tableName);
@@ -215,7 +226,31 @@ public class RowResultMerger {
     }
     carbonFactDataHandlerModel.setAggType(aggType);
     carbonFactDataHandlerModel.setFactDimLens(segprop.getDimColumnsCardinality());
+
+    String carbonDataDirectoryPath = checkAndCreateCarbonStoreLocation(this.factStoreLocation,
+        schemaName,tableName,loadModel.getPartitionId(),loadModel.getSegmentId());
+    carbonFactDataHandlerModel.setCarbonDataDirectoryPath(carbonDataDirectoryPath);
+
+
     return carbonFactDataHandlerModel;
+  }
+
+  /**
+   * This method will get the store location for the given path, segment id and partition id
+   *
+   * @return data directory path
+   */
+  private String checkAndCreateCarbonStoreLocation(String factStoreLocation, String schemaName,
+      String tableName, String partitionId, String segmentId) {
+    String carbonStorePath = factStoreLocation;
+    CarbonTableIdentifier carbonTableIdentifier =
+        new CarbonTableIdentifier(schemaName,tableName);
+    CarbonTablePath carbonTablePath =
+        CarbonStorePath.getCarbonTablePath(carbonStorePath, carbonTableIdentifier);
+    String carbonDataDirectoryPath =
+        carbonTablePath.getCarbonDataDirectoryPath(partitionId, segmentId);
+    CarbonUtil.checkAndCreateFolder(carbonDataDirectoryPath);
+    return carbonDataDirectoryPath;
   }
 
   private class CarbonMdkeyComparator implements Comparator<RawResultIterator> {
