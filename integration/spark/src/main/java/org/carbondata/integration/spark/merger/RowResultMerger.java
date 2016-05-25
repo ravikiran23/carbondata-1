@@ -209,7 +209,8 @@ public class RowResultMerger {
     carbonFactDataHandlerModel.setStoreLocation(tempStoreLocation);
     carbonFactDataHandlerModel.setDimLens(segprop.getDimColumnsCardinality());
     carbonFactDataHandlerModel.setNoDictionaryCount(segprop.getNumberOfNoDictionaryDimension());
-    carbonFactDataHandlerModel.setDimensionCount(segprop.getDimensions().size());
+    carbonFactDataHandlerModel.setDimensionCount(
+        segprop.getDimensions().size() - carbonFactDataHandlerModel.getNoDictionaryCount());
     //TO-DO Need to handle complex types here .
     Map<Integer, GenericDataType> complexIndexMap =
         new HashMap<Integer, GenericDataType>(segprop.getComplexDimensions().size());
