@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.carbondata.integration.spark.merger;
 
 import java.io.File;
@@ -10,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
+import org.carbondata.common.logging.LogService;
+import org.carbondata.common.logging.LogServiceFactory;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
@@ -34,7 +54,7 @@ import org.carbondata.query.carbon.wrappers.ByteArrayWrapper;
 import org.carbondata.spark.load.CarbonLoadModel;
 
 /**
- *
+ * This is the Merger class responsible for the merging of the segments.
  */
 public class RowResultMerger {
 
@@ -55,11 +75,13 @@ public class RowResultMerger {
   private TupleConversionAdapter tupleConvertor;
   private ColumnGroupModel colGrpStoreModel;
 
-  public RowResultMerger(List<CarbonIterator<BatchRawResult>> iteratorList, String cubeName,
-      String schemaName, String loadPath, int[] dimlens, int mdKeyLength, String tableName,
-      int currentRestructNumber, SegmentProperties segProp, String tempStoreLocation,
+  private static final LogService LOGGER =
+      LogServiceFactory.getLogService(RowResultMerger.class.getName());
+
+  public RowResultMerger(List<CarbonIterator<BatchRawResult>> iteratorList,
+      String schemaName, String tableName,
+      SegmentProperties segProp, String tempStoreLocation,
       CarbonLoadModel loadModel, int[] colCardinality) {
-    // this.rawResultIteratorList = iteratorList;
 
     this.rawResultIteratorList = getRawResultIterator(iteratorList);
     // create the List of RawResultIterator.
@@ -73,7 +95,7 @@ public class RowResultMerger {
     this.factStoreLocation = loadModel.getFactStoreLocation();
 
     if (!new File(tempStoreLocation).mkdirs()) {
-      //LOGGER.error("Error while new File(storeLocation).mkdirs() ");
+      LOGGER.error("Error while new File(tempStoreLocation).mkdirs() ");
     }
 
     this.schemaName = schemaName;
@@ -161,7 +183,6 @@ public class RowResultMerger {
         if (!poll.hasNext()) {
           break;
         }
-        //   poll.fetchNextData();
       }
       this.dataHandler.finish();
 
@@ -254,6 +275,9 @@ public class RowResultMerger {
     return carbonDataDirectoryPath;
   }
 
+  /**
+   * Comparator class for comparing 2 raw row result.
+   */
   private class CarbonMdkeyComparator implements Comparator<RawResultIterator> {
 
     @Override public int compare(RawResultIterator o1, RawResultIterator o2) {

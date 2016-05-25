@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.carbondata.integration.spark.merger;
 
 import java.util.ArrayList;
@@ -9,7 +27,7 @@ import org.carbondata.processing.util.RemoveDictionaryUtil;
 import org.carbondata.query.carbon.wrappers.ByteArrayWrapper;
 
 /**
- * This class will be used to convert the Result into the format used in data write
+ * This class will be used to convert the Result into the format used in data writer.
  */
 public class TupleConversionAdapter {
 
@@ -33,31 +51,19 @@ public class TupleConversionAdapter {
     measureList = segmentProperties.getMeasures();
   }
 
+  /**
+   * Converting the raw result to the format understandable by the data writer.
+   * @param carbonTuple
+   * @return
+   */
   public Object[] getObjectArray(Object[] carbonTuple) {
     Object[] row = new Object[measureCount + noDictionaryPresentIndex + 1];
     int index = 0;
-    //    MeasureAggregator[] measureAggregator = carbonTuple.getValue();
     // put measures.
 
     for (int j = 1; j <= measureCount; j++) {
       row[index++] = carbonTuple[j];
     }
-
-    /*for (CarbonMeasure msr : measureList) {
-      Object val;
-      switch (msr.getDataType()) {
-        case LONG:
-          val = measureAggregator[index].getLongValue();
-          break;
-        case DECIMAL:
-          val = measureAggregator[index].getBigDecimalValue();
-          break;
-        default:
-          val = measureAggregator[index].getDoubleValue();
-          break;
-      }
-      row[index++] = val;
-    }*/
 
     // put No dictionary byte []
     if (isNoDictionaryPresent) {

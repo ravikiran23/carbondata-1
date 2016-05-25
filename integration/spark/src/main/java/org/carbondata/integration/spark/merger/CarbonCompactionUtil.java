@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.carbondata.integration.spark.merger;
 
 import java.io.File;
@@ -18,7 +36,7 @@ import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.core.util.CarbonUtilException;
 
 /**
- *
+ * Utility Class for the Compaction Flow.
  */
 public class CarbonCompactionUtil {
 
@@ -35,7 +53,6 @@ public class CarbonCompactionUtil {
         new HashMap<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
     for (TableBlockInfo info : tableBlockInfoList) {
-      List<TableBlockInfo> eachSegmentBlocks = new ArrayList<>();
       String segId = info.getSegmentId();
       // check if segId is already present in map
       Map<String, List<TableBlockInfo>> taskMapping = segmentBlockInfoMapping.get(segId);
@@ -56,6 +73,12 @@ public class CarbonCompactionUtil {
 
   }
 
+  /**
+   * Grouping the taskNumber and list of TableBlockInfo.
+   * @param info
+   * @param taskMapping
+   * @param taskNo
+   */
   private static void groupCorrespodingInfoBasedOnTask(TableBlockInfo info,
       Map<String, List<TableBlockInfo>> taskMapping, String taskNo) {
     // get the corresponding list from task mapping.
@@ -71,12 +94,12 @@ public class CarbonCompactionUtil {
   }
 
   /**
-   * To create a mapping of Segment Id and DataFileMetadata.
+   * To create a mapping of Segment Id and DataFileFooter.
    *
    * @param tableBlockInfoList
    * @return
    */
-  public static Map<String, List<DataFileFooter>> createDataFileMappingForSegments(
+  public static Map<String, List<DataFileFooter>> createDataFileFooterMappingForSegments(
       List<TableBlockInfo> tableBlockInfoList) throws IndexBuilderException {
 
     Map<String, List<DataFileFooter>> segmentBlockInfoMapping = new HashMap<>();
@@ -91,7 +114,6 @@ public class CarbonCompactionUtil {
         dataFileMatadata = CarbonUtil
             .readMetadatFile(blockInfo.getFilePath(), blockInfo.getBlockOffset(),
                 blockInfo.getBlockLength());
-        // dataFileMatadata.set(blockInfo.getFilePath());
       } catch (CarbonUtilException e) {
         throw new IndexBuilderException(e);
       }
@@ -121,7 +143,6 @@ public class CarbonCompactionUtil {
   public static String getTempLocation(String schemaName, String cubeName, String partitionID,
       String segmentId, String taskNo){
     String storeLocation;
-    CarbonProperties instance = CarbonProperties.getInstance();
     String tempLocationKey = schemaName + '_' + cubeName;
     String baseStorePath = CarbonProperties.getInstance()
         .getProperty(tempLocationKey, CarbonCommonConstants.STORE_LOCATION_DEFAULT_VAL);

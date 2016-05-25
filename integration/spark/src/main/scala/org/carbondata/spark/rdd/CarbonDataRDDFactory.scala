@@ -290,9 +290,7 @@ object CarbonDataRDDFactory extends Logging {
           .getCompactionSize(CompactionType.MINOR_COMPACTION);
 
         val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
-          hdfsStoreLocation, FileFactory.getFileType(hdfsStoreLocation),
-          carbonTable.getMetaDataFilepath(), carbonLoadModel, currentRestructNumber,
-          partitioner.partitionCount, compactionSize
+          hdfsStoreLocation, carbonLoadModel, partitioner.partitionCount, compactionSize
         );
 
         if (loadsToMerge.size() > 1) {
@@ -545,50 +543,6 @@ object CarbonDataRDDFactory extends Logging {
           logInfo("********schema updated**********")
         }
         logger.audit("The data loading is successful.")
-        /* if (CarbonDataMergerUtil
-          .checkIfLoadMergingRequired(carbonTable.getMetaDataFilepath, carbonLoadModel,
-            hdfsStoreLocation, partitioner.partitionCount, currentRestructNumber)) {
-
-          val loadsToMerge = CarbonDataMergerUtil.getLoadsToMergeFromHDFS(
-            hdfsStoreLocation, FileFactory.getFileType(hdfsStoreLocation),
-            carbonTable.getMetaDataFilepath, carbonLoadModel, currentRestructNumber,
-            partitioner.partitionCount)
-
-          if (loadsToMerge.size() == 2) {
-            val MergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
-            var finalMergeStatus = true
-            val tableBlockList = new java.util.ArrayList[TableBlockInfo]();
-            val mergeStatus = new CarbonMergerRDD(
-              sc.sparkContext,
-              new MergeResultImpl(),
-              carbonLoadModel,
-              storeLocation,
-              hdfsStoreLocation,
-              partitioner,
-              currentRestructNumber,
-              carbonTable.getMetaDataFilepath,
-              loadsToMerge,
-              MergedLoadName,
-              kettleHomePath,
-              cubeCreationTime,
-              tableBlockList,
-              "",
-            "",
-            "").collect
-
-            mergeStatus.foreach { eachMergeStatus =>
-              val state = eachMergeStatus._2
-              if (!state) {
-                finalMergeStatus = false
-              }
-            }
-            if (finalMergeStatus) {
-              CarbonDataMergerUtil
-                .updateLoadMetadataWithMergeStatus(loadsToMerge, carbonTable.getMetaDataFilepath,
-                  MergedLoadName, carbonLoadModel)
-            }
-          }
-        } */
       }
     }
 

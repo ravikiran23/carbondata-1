@@ -952,7 +952,7 @@ public final class CarbonCommonConstants {
   /**
    * DEFAULT_ENABLE_LOAD_MERGE
    */
-  public static final String DEFAULT_ENABLE_LOAD_MERGE = "true";
+  public static final String DEFAULT_ENABLE_LOAD_MERGE = "false";
 
   /**
    * ZOOKEEPER_ENABLE_LOCK if this is set to true then zookeeper will be used to handle locking

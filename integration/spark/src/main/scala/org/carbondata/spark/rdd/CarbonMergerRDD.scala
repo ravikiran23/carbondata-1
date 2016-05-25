@@ -17,7 +17,7 @@
 
 package org.carbondata.spark.rdd
 
-import java.util.{Date, List}
+import java.util.{List}
 import java.util
 
 import scala.collection.JavaConverters._
@@ -70,14 +70,8 @@ class CarbonMergerRDD[K, V](
   override def compute(theSplit: Partition, context: TaskContext): Iterator[(K, V)] = {
     val iter = new Iterator[(K, V)] {
       var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
-      // val split = theSplit.asInstanceOf[CarbonSparkPartition]
-      // logInfo("Input split: " + split.serializableHadoopSplit.value)
-      //  val partitionId = split.serializableHadoopSplit.value.getPartition().getUniqueID()
-       /*  val model = carbonLoadModel
-          .getCopyWithPartition(split.serializableHadoopSplit.value.getPartition().getUniqueID()) */
       carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
       val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
-      // val carbonInputSplit = carbonSparkPartition.serializableHadoopSplit.value
 
       val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
         .getTableName;
@@ -96,7 +90,7 @@ class CarbonMergerRDD[K, V](
         CarbonCompactionUtil.createMappingForSegments(tableBlockInfoList)
 
       val dataFileMetadataSegMapping: java.util.Map[String, List[DataFileFooter]] =
-        CarbonCompactionUtil.createDataFileMappingForSegments(tableBlockInfoList)
+        CarbonCompactionUtil.createDataFileFooterMappingForSegments(tableBlockInfoList)
 
       carbonLoadModel.setFactStoreLocation(hdfsStoreLocation)
 
@@ -125,11 +119,6 @@ class CarbonMergerRDD[K, V](
           CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()
         )
 
-     /* val mergeNumber = mergedLoadName.substring
-      (mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
-        CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()) */
-
-
       val tempStoreLoc = CarbonCompactionUtil.getTempLocation(schemaName, factTableName,
         "0", mergeNumber,
         carbonLoadModel.getTaskNo
@@ -138,52 +127,14 @@ class CarbonMergerRDD[K, V](
       carbonLoadModel.setSegmentId(mergeNumber);
       carbonLoadModel.setPartitionId(theSplit.index.toString);
       val merger = new RowResultMerger(result2,
-        factTableName,
         schemaName,
-        hdfsStoreLocation,
-        segmentProperties.getDimColumnsCardinality,
-        segmentProperties.getDimColumnsCardinality.size,
         factTableName,
-        0,
         segmentProperties,
         tempStoreLoc,
         carbonLoadModel,
         colCardinality
       )
       val mergeStatus = merger.mergerSlice()
-
-      //  CarbonLoaderUtil.copyMergedLoadToHDFS(carbonLoadModel, currentRestructNumber,
-      // mergedLoadName)
-
-      // merge the result using a merger.
-
-      // TODO remove comment below
-      // val  resultList:List[CarbonIterator[Result]]  = exec.processTableBlocks()
-
-      // = CarbonCompactionUtil.processTableBlocks(segmentMapping,queryExecutor,segmentProperties,
-      // schemaName,factTableName)
-
-
-      // create a segment builder info
-       /* val indexBuilderInfo: BTreeBuilderInfo = new BTreeBuilderInfo(listMetadata,
-        segmentProperties.getDimensionColumnsValueSize
-      ) */
-
-
-      //  old code
-      // val mergedLoadMetadataDetails = false
-       /*  val mergedLoadMetadataDetails = CarbonDataMergerUtil
-         .executeMerging(model, storeLocation, hdfsStoreLocation, currentRestructNumber,
-           metadataFilePath, loadsToMerge, mergedLoadName) */
-
-      /*  model.setLoadMetadataDetails(CarbonUtil
-         .readLoadMetadata(metadataFilePath).toList.asJava);
-
-       if (mergedLoadMetadataDetails == true) {
-         CarbonLoaderUtil.copyMergedLoadToHDFS(model, currentRestructNumber, mergedLoadName)
-         dataloadStatus = checkAndLoadAggregationTable
-
-       } */
 
       var havePair = false
       var finished = false
@@ -211,7 +162,6 @@ class CarbonMergerRDD[K, V](
 
   override def getPreferredLocations(split: Partition): Seq[String] = {
     val theSplit = split.asInstanceOf[CarbonSparkPartition]
-    // theSplit.serializableHadoopSplit.value.getLocations.filter(_ != "localhost")
     theSplit.locations.filter(_ != "localhost")
   }
 
@@ -230,7 +180,6 @@ class CarbonMergerRDD[K, V](
 
     val result = new util.ArrayList[Partition](defaultParallelism)
     val filterResolver: FilterResolverIntf = null
-   // var blockList: List[TableBlockInfo] = new java.util.ArrayList[TableBlockInfo]()
     val mapsOfNodeBlockMapping: util.List[util.Map[String, util.List[TableBlockInfo]]] = new
         java.util.ArrayList[util.Map[String, util.List[TableBlockInfo]]]()
     var noOfBlocks = 0
@@ -248,10 +197,6 @@ class CarbonMergerRDD[K, V](
         )
       )
       noOfBlocks += blocksOfOneSegment.size
-      // blockList.addAll(blocksOfOneSegment.asJava)
-
-      // if(!blockList.isEmpty) {
-      // group blocks to nodes, tasks
       mapsOfNodeBlockMapping.add(CarbonLoaderUtil.nodeBlockMapping(blocksOfOneSegment.asJava, -1))
     }
 
@@ -284,11 +229,6 @@ class CarbonMergerRDD[K, V](
         + ", No.Of Blocks : " + cp.tableBlockInfos.size()
       )
     }
-     /* } else {
-       logInfo("No blocks identified to scan")
-       val nodesPerBlock = new util.ArrayList[TableBlockInfo]()
-       result.add(new CarbonSparkPartition(id, 0, Seq("").toArray, nodesPerBlock))
-     } */
     result.toArray(new Array[Partition](result.size()))
   }
 
