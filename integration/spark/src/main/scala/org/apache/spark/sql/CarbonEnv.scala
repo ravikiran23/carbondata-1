@@ -19,6 +19,8 @@ package org.apache.spark.sql
 
 import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, HiveContext}
 
+import org.carbondata.core.locks.ZooKeeperInit
+
 /**
  * Carbon Environment for unified context
  */
@@ -33,6 +35,10 @@ object CarbonEnv {
       carbonEnv =
         CarbonEnv(sqlContext.asInstanceOf[CarbonContext],
           sqlContext.asInstanceOf[CarbonContext].catalog)
+
+      val zookeeperUrl = sqlContext.getConf("spark.deploy.zookeeper.url", "")
+      ZooKeeperInit.getInstance(zookeeperUrl)
+
     }
     carbonEnv
   }

@@ -18,20 +18,15 @@
  */
 package org.carbondata.core.locks;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
 import org.carbondata.core.constants.CarbonCommonConstants;
-import org.carbondata.core.util.CarbonProperties;
 
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 
@@ -42,18 +37,6 @@ public class ZooKeeperLocking extends AbstractCarbonLock {
 
   private static final LogService LOGGER =
       LogServiceFactory.getLogService(ZooKeeperLocking.class.getName());
-
-  /**
-   * zk is the zookeeper client instance
-   */
-  private static ZooKeeper zk;
-
-  /**
-   * zooKeeperLocation is the location in the zoo keeper file system where the locks will be
-   * maintained.
-   */
-  private static final String zooKeeperLocation =
-      CarbonProperties.getInstance().getProperty(CarbonCommonConstants.ZOOKEEPER_LOCATION);
 
   /**
    * lockName is the name of the lock to use. This name should be same for every process that want
@@ -68,48 +51,24 @@ public class ZooKeeperLocking extends AbstractCarbonLock {
 
   private String lockTypeFolder;
 
-  // static block to create the zookeeper client.
-  // here the zookeeper client will be created and also the znode will be created.
-
-  static {
-    String zookeeperUrl = CarbonProperties.getInstance().getProperty("spark.deploy.zookeeper.url");
-    int sessionTimeOut = 100000;
-    try {
-      zk = new ZooKeeper(zookeeperUrl, sessionTimeOut, new Watcher() {
-
-        @Override public void process(WatchedEvent event) {
-          if (event.getState().equals(KeeperState.SyncConnected)) {
-            // if exists returns null then path doesn't exist. so creating.
-            try {
-              if (null == zk.exists(zooKeeperLocation, true)) {
-                // creating a znode in which all the znodes (lock files )are maintained.
-                zk.create(zooKeeperLocation, new byte[1], Ids.OPEN_ACL_UNSAFE,
-                    CreateMode.PERSISTENT);
-              }
-            } catch (KeeperException | InterruptedException e) {
-              LOGGER.error(e.getMessage());
-            }
-            LOGGER.info("zoo keeper client connected.");
-          }
-
-        }
-      });
-
-    } catch (IOException e) {
-      LOGGER.error(e.getMessage());
-    }
-  }
+  private ZooKeeper zk;
 
   /**
    * @param lockUsage
    */
   public ZooKeeperLocking(LockUsage lockUsage) {
+
+    ZooKeeperInit zooKeeperInit = ZooKeeperInit.getInstance();
+
+    zk = zooKeeperInit.getZookeeper();
+
     this.lockName = CarbonCommonConstants.METADATA_LOCK;
-    this.lockTypeFolder = zooKeeperLocation;
+    this.lockTypeFolder = ZooKeeperInit.zooKeeperLocation;
 
     if (lockUsage == LockUsage.METADATA_LOCK) {
       this.lockTypeFolder =
-          zooKeeperLocation + CarbonCommonConstants.FILE_SEPARATOR + lockUsage.toString();
+          ZooKeeperInit.zooKeeperLocation + CarbonCommonConstants.FILE_SEPARATOR + lockUsage
+              .toString();
       // creating a znode in which all the znodes (lock files )are maintained.
       try {
         // if exists returns null then path doesnt exist. so creating.
