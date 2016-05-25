@@ -17,7 +17,6 @@
 
 package org.carbondata.spark.rdd
 
-import java.text.SimpleDateFormat
 import java.util.{Date, List}
 import java.util
 
@@ -26,7 +25,7 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.cubemodel.Partitioner
+import org.apache.spark.sql.execution.command.Partitioner
 
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo}
@@ -36,14 +35,15 @@ import org.carbondata.core.iterator.CarbonIterator
 import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
-import org.carbondata.integration.spark.MergeResult
-import org.carbondata.integration.spark.load._
-import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil,
-CarbonDataMergerUtil, RowResultMerger}
-import org.carbondata.integration.spark.splits.TableSplit
-import org.carbondata.integration.spark.util.QueryPlanUtil
+import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil, RowResultMerger}
+import org.carbondata.lcm.status.SegmentStatusManager
 import org.carbondata.query.carbon.result.{BatchRawResult, RowResult}
 import org.carbondata.query.filter.resolver.FilterResolverIntf
+import org.carbondata.spark.MergeResult
+import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
+import org.carbondata.spark.merger.CarbonDataMergerUtil
+import org.carbondata.spark.splits.TableSplit
+import org.carbondata.spark.util.QueryPlanUtil
 
 
 class CarbonMergerRDD[K, V](
@@ -88,8 +88,8 @@ class CarbonMergerRDD[K, V](
       var tableBlockInfoList = carbonSparkPartition.tableBlockInfos
       var segmentStatusManager = new SegmentStatusManager(new AbsoluteTableIdentifier
       (CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION),
-        new CarbonTableIdentifier(model.getDatabaseName, model.getTableName)))
-      model.setLoadMetadataDetails(segmentStatusManager
+        new CarbonTableIdentifier(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)))
+      carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
         .readLoadMetadata(metadataFilePath).toList.asJava)
 
       val segmentMapping: java.util.Map[String, java.util.Map[String, List[TableBlockInfo]]] =
@@ -120,12 +120,14 @@ class CarbonMergerRDD[K, V](
       // fire a query and get the results.
       val result2: util.List[CarbonIterator[BatchRawResult]] = exec.processTableBlocks();
 
-      val mergeNumber = mergedLoadName.substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
-        CarbonCommonConstants.LOAD_FOLDER.length(),mergedLoadName.length())
+      val mergeNumber = mergedLoadName
+        .substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
+          CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()
+        )
 
      /* val mergeNumber = mergedLoadName.substring
       (mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
-        CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length())*/
+        CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()) */
 
 
       val tempStoreLoc = CarbonCompactionUtil.getTempLocation(schemaName, factTableName,

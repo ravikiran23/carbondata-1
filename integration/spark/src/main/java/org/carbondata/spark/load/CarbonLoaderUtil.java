@@ -1225,7 +1225,7 @@ public final class CarbonLoaderUtil {
    * @param segmentId
    */
   public static void checkAndCreateCarbonDataLocation(String carbonStorePath, String dbName,
-      String tableName, int partitionCount, int segmentId) {
+      String tableName, int partitionCount, String segmentId) {
     CarbonTableIdentifier carbonTableIdentifier = new CarbonTableIdentifier(dbName, tableName);
     CarbonTablePath carbonTablePath =
         CarbonStorePath.getCarbonTablePath(carbonStorePath, carbonTableIdentifier);

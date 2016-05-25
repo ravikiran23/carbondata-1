@@ -28,25 +28,21 @@ import org.apache.hadoop.io.{LongWritable, Text}
 import org.apache.spark.{Logging, SparkContext}
 import org.apache.spark.rdd.{DummyLoadRDD, NewHadoopRDD}
 import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
-import org.apache.spark.sql.cubemodel.Partitioner
-import org.apache.spark.sql.hive.HiveContext
 import org.apache.spark.sql.execution.command.Partitioner
 import org.apache.spark.util.{FileUtils, SplitUtils}
 
 import org.carbondata.common.logging.LogServiceFactory
-import org.carbondata.core.carbon.{CarbonDataLoadSchema, CarbonDef}
+import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonDataLoadSchema, CarbonTableIdentifier}
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo
+import org.carbondata.core.carbon.metadata.CarbonMetadata
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.datastorage.store.impl.FileFactory
 import org.carbondata.core.load.{BlockDetails, LoadMetadataDetails}
 import org.carbondata.core.locks.{CarbonLockFactory, LockUsage}
 import org.carbondata.core.util.{CarbonProperties, CarbonUtil}
-import org.carbondata.integration.spark._
-import org.carbondata.integration.spark.load._
-import org.carbondata.integration.spark.merger.{CarbonDataMergerUtil, CompactionType}
-import org.carbondata.integration.spark.splits.TableSplit
-import org.carbondata.integration.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
+import org.carbondata.integration.spark.merger.CompactionType
+import org.carbondata.lcm.status.SegmentStatusManager
 import org.carbondata.processing.util.CarbonDataProcessorUtil
 import org.carbondata.query.scanner.impl.{CarbonKey, CarbonValue}
 import org.carbondata.spark._
@@ -295,7 +291,7 @@ object CarbonDataRDDFactory extends Logging {
 
         val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
           hdfsStoreLocation, FileFactory.getFileType(hdfsStoreLocation),
-          cube.getMetaDataFilepath(), carbonLoadModel, currentRestructNumber,
+          carbonTable.getMetaDataFilepath(), carbonLoadModel, currentRestructNumber,
           partitioner.partitionCount, compactionSize
         );
 
@@ -317,7 +313,7 @@ object CarbonDataRDDFactory extends Logging {
             hdfsStoreLocation,
             partitioner,
             currentRestructNumber,
-            cube.getMetaDataFilepath(),
+            carbonTable.getMetaDataFilepath(),
             loadsToMerge,
             MergedLoadName,
             kettleHomePath,
@@ -328,14 +324,14 @@ object CarbonDataRDDFactory extends Logging {
           ).collect
 
           mergeStatus.foreach { eachMergeStatus =>
-            val state = eachMergeStatus._2
+            val state: Boolean = eachMergeStatus._2
             if (!state) {
               finalMergeStatus = false
             }
           }
           if (finalMergeStatus) {
             CarbonDataMergerUtil
-               .updateLoadMetadataWithMergeStatus(loadsToMerge, cube.getMetaDataFilepath(),
+               .updateLoadMetadataWithMergeStatus(loadsToMerge, carbonTable.getMetaDataFilepath(),
                  MergedLoadName, carbonLoadModel)
           }
         }
@@ -470,7 +466,7 @@ object CarbonDataRDDFactory extends Logging {
       }
       CarbonLoaderUtil.checkAndCreateCarbonDataLocation(hdfsStoreLocation,
         carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName,
-        partitioner.partitionCount, currentLoadCount)
+        partitioner.partitionCount, currentLoadCount.toString)
       val status = new
           CarbonDataLoadRDD(sc.sparkContext, new ResultImpl(), carbonLoadModel, storeLocation,
             hdfsStoreLocation, kettleHomePath, partitioner, columinar, currentRestructNumber,

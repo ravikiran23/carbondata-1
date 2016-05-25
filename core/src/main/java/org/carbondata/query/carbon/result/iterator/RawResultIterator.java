@@ -6,7 +6,7 @@ import org.carbondata.query.carbon.result.BatchRawResult;
 /**
  *
  */
-public class RawResultIterator implements CarbonIterator<Object[]> {
+public class RawResultIterator extends CarbonIterator<Object[]> {
 
   private CarbonIterator<BatchRawResult> detailRawQueryResultIterator;
 

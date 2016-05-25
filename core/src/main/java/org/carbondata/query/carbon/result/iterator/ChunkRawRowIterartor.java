@@ -6,7 +6,7 @@ import org.carbondata.query.carbon.result.BatchRawResult;
 /**
  * Created by root1 on 28/4/16.
  */
-public class ChunkRawRowIterartor implements CarbonIterator<Object[]> {
+public class ChunkRawRowIterartor extends CarbonIterator<Object[]> {
 
   /**
    * iterator over chunk result

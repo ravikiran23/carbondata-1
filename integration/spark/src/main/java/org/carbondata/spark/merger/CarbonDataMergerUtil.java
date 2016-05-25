@@ -34,6 +34,7 @@ import java.util.Map;
 
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
+import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable;
@@ -44,6 +45,7 @@ import org.carbondata.core.datastorage.store.impl.FileFactory;
 import org.carbondata.core.datastorage.store.impl.FileFactory.FileType;
 import org.carbondata.core.load.LoadMetadataDetails;
 import org.carbondata.core.util.CarbonProperties;
+import org.carbondata.integration.spark.merger.CompactionType;
 import org.carbondata.lcm.status.SegmentStatusManager;
 import org.carbondata.spark.load.CarbonLoadModel;
 import org.carbondata.spark.load.CarbonLoaderUtil;
@@ -364,7 +366,7 @@ public final class CarbonDataMergerUtil {
 
     SegmentStatusManager segmentStatusManager = new SegmentStatusManager(
         new AbsoluteTableIdentifier(
-            carbonLoadModel.getFactStoreLocation(),
+            CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION),
             new CarbonTableIdentifier(carbonLoadModel.getDatabaseName(),
                 carbonLoadModel.getTableName())));
     LoadMetadataDetails[] loadDetails = segmentStatusManager.readLoadMetadata(metaDataFilepath);

@@ -21,7 +21,6 @@ import org.carbondata.core.util.ByteUtil;
 import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.core.util.DataTypeUtil;
 import org.carbondata.core.vo.ColumnGroupModel;
-import org.carbondata.integration.spark.load.CarbonLoadModel;
 import org.carbondata.processing.datatypes.GenericDataType;
 import org.carbondata.processing.merger.exeception.SliceMergerException;
 import org.carbondata.processing.store.CarbonDataFileAttributes;
@@ -32,6 +31,7 @@ import org.carbondata.processing.store.writer.exception.CarbonDataWriterExceptio
 import org.carbondata.query.carbon.result.BatchRawResult;
 import org.carbondata.query.carbon.result.iterator.RawResultIterator;
 import org.carbondata.query.carbon.wrappers.ByteArrayWrapper;
+import org.carbondata.spark.load.CarbonLoadModel;
 
 /**
  *
@@ -58,7 +58,7 @@ public class RowResultMerger {
   public RowResultMerger(List<CarbonIterator<BatchRawResult>> iteratorList, String cubeName,
       String schemaName, String loadPath, int[] dimlens, int mdKeyLength, String tableName,
       int currentRestructNumber, SegmentProperties segProp, String tempStoreLocation,
-      CarbonLoadModel loadModel,int[] colCardinality) {
+      CarbonLoadModel loadModel, int[] colCardinality) {
     // this.rawResultIteratorList = iteratorList;
 
     this.rawResultIteratorList = getRawResultIterator(iteratorList);
@@ -81,7 +81,8 @@ public class RowResultMerger {
 
     this.measureCount = segprop.getMeasures().size();
 
-    CarbonFactDataHandlerModel carbonFactDataHandlerModel = getCarbonFactDataHandlerModel(loadModel);
+    CarbonFactDataHandlerModel carbonFactDataHandlerModel =
+        getCarbonFactDataHandlerModel(loadModel);
     carbonFactDataHandlerModel.setPrimitiveDimLens(segprop.getDimColumnsCardinality());
     CarbonDataFileAttributes carbonDataFileAttributes =
         new CarbonDataFileAttributes(Integer.parseInt(loadModel.getTaskNo()),
@@ -165,7 +166,7 @@ public class RowResultMerger {
       this.dataHandler.finish();
 
     } catch (CarbonDataWriterException e) {
-      return  mergeStatus;
+      return mergeStatus;
     } finally {
       try {
         this.dataHandler.closeHandler();
@@ -195,8 +196,8 @@ public class RowResultMerger {
   /**
    * This method will create a model object for carbon fact data handler
    *
-   * @return
    * @param loadModel
+   * @return
    */
   private CarbonFactDataHandlerModel getCarbonFactDataHandlerModel(CarbonLoadModel loadModel) {
     CarbonFactDataHandlerModel carbonFactDataHandlerModel = new CarbonFactDataHandlerModel();
@@ -227,10 +228,10 @@ public class RowResultMerger {
     carbonFactDataHandlerModel.setAggType(aggType);
     carbonFactDataHandlerModel.setFactDimLens(segprop.getDimColumnsCardinality());
 
-    String carbonDataDirectoryPath = checkAndCreateCarbonStoreLocation(this.factStoreLocation,
-        schemaName,tableName,loadModel.getPartitionId(),loadModel.getSegmentId());
+    String carbonDataDirectoryPath =
+        checkAndCreateCarbonStoreLocation(this.factStoreLocation, schemaName, tableName,
+            loadModel.getPartitionId(), loadModel.getSegmentId());
     carbonFactDataHandlerModel.setCarbonDataDirectoryPath(carbonDataDirectoryPath);
-
 
     return carbonFactDataHandlerModel;
   }
@@ -243,8 +244,7 @@ public class RowResultMerger {
   private String checkAndCreateCarbonStoreLocation(String factStoreLocation, String schemaName,
       String tableName, String partitionId, String segmentId) {
     String carbonStorePath = factStoreLocation;
-    CarbonTableIdentifier carbonTableIdentifier =
-        new CarbonTableIdentifier(schemaName,tableName);
+    CarbonTableIdentifier carbonTableIdentifier = new CarbonTableIdentifier(schemaName, tableName);
     CarbonTablePath carbonTablePath =
         CarbonStorePath.getCarbonTablePath(carbonStorePath, carbonTableIdentifier);
     String carbonDataDirectoryPath =
@@ -259,8 +259,7 @@ public class RowResultMerger {
 
       Object[] row1 = o1.fetch();
       Object[] row2 = o2.fetch();
-      if(null == row1 || null == row2 )
-      {
+      if (null == row1 || null == row2) {
         return 0;
       }
       ByteArrayWrapper key1 = (ByteArrayWrapper) row1[0];
