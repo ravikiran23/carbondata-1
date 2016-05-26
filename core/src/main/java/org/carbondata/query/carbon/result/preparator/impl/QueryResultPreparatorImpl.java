@@ -27,6 +27,8 @@ import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
 import org.carbondata.core.carbon.metadata.encoder.Encoding;
 import org.carbondata.core.constants.CarbonCommonConstants;
+import org.carbondata.core.keygenerator.directdictionary.DirectDictionaryGenerator;
+import org.carbondata.core.keygenerator.directdictionary.DirectDictionaryKeyGeneratorFactory;
 import org.carbondata.core.util.CarbonUtil;
 import org.carbondata.query.aggregator.MeasureAggregator;
 import org.carbondata.query.aggregator.impl.CountAggregator;
@@ -156,7 +158,13 @@ public class QueryResultPreparatorImpl extends AbstractQueryResultPreparator<Bat
         if (!CarbonUtil
             .hasEncoding(queryDimension.getDimension().getEncoder(), Encoding.DICTIONARY)) {
           row[queryDimension.getQueryOrder()] = convertedResult[i][columnIndex];
-        } else {
+        } else if (CarbonUtil
+            .hasEncoding(queryDimension.getDimension().getEncoder(), Encoding.DIRECT_DICTIONARY)) {
+          DirectDictionaryGenerator directDictionaryGenerator = DirectDictionaryKeyGeneratorFactory
+              .getDirectDictionaryGenerator(queryDimension.getDimension().getDataType());
+          row[queryDimension.getQueryOrder()] = directDictionaryGenerator
+              .getValueFromSurrogate((Integer) convertedResult[i][columnIndex]);
+        }else {
           if (queryExecuterProperties.sortDimIndexes[i] == 1) {
             row[queryDimension.getQueryOrder()] = DataTypeUtil.getDataBasedOnDataType(
                 queryExecuterProperties.columnToDictionayMapping
