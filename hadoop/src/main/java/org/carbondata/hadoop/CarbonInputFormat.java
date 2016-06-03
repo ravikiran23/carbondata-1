@@ -105,7 +105,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * Set List of segments to access
    */
-  private void setSegmentsToAccess(Configuration configuration, List<String> segmentNosList) {
+  public void setSegmentsToAccess(Configuration configuration, List<String> segmentNosList) {
 
     //serialize to comma separated string
     StringBuilder stringSegmentsBuilder = new StringBuilder();
@@ -177,7 +177,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     // identify table blocks
     for (InputSplit inputSplit : splits) {
       FileSplit fileSplit = (FileSplit) inputSplit;
-      int segmentId = CarbonTablePath.DataPathUtil.getSegmentId(fileSplit.getPath().toString());
+      String segmentId = CarbonTablePath.DataPathUtil.getSegmentId(fileSplit.getPath().toString());
       if (INVALID_SEGMENT_ID == segmentId) {
         continue;
       }
@@ -230,7 +230,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
         getAbsoluteTableIdentifier(job.getConfiguration());
 
     //for each segment fetch blocks matching filter in Driver BTree
-    for (int segmentNo : getValidSegments(job)) {
+    for (String segmentNo : getValidSegments(job)) {
       List<DataRefNode> dataRefNodes =
           getDataBlocksOfSegment(job, filterExpressionProcessor, absoluteTableIdentifier,
               filterResolver, segmentNo);
@@ -262,7 +262,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     setSegmentsToAccess(job.getConfiguration(), validSegments.listOfValidSegments);
 
     //for each segment fetch blocks matching filter in Driver BTree
-    for (int segmentNo : getValidSegments(job)) {
+    for (String segmentNo : getValidSegments(job)) {
       Map<String, AbstractIndex> segmentIndexMap =
           getSegmentAbstractIndexs(job, absoluteTableIdentifier, segmentNo);
 
@@ -373,7 +373,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
    */
   private List<DataRefNode> getDataBlocksOfSegment(JobContext job,
       FilterExpressionProcessor filterExpressionProcessor,
-      AbsoluteTableIdentifier absoluteTableIdentifier, FilterResolverIntf resolver, int segmentId)
+      AbsoluteTableIdentifier absoluteTableIdentifier, FilterResolverIntf resolver,
+      String segmentId)
       throws IndexBuilderException, IOException {
 
     Map<String, AbstractIndex> segmentIndexMap =
@@ -404,7 +405,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   private Map<String, AbstractIndex> getSegmentAbstractIndexs(JobContext job,
-      AbsoluteTableIdentifier absoluteTableIdentifier, int segmentId)
+      AbsoluteTableIdentifier absoluteTableIdentifier, String segmentId)
       throws IOException, IndexBuilderException {
     Map<String, AbstractIndex> segmentIndexMap = SegmentTaskIndexStore.getInstance()
         .getSegmentBTreeIfExists(absoluteTableIdentifier, segmentId);
@@ -428,7 +429,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
                 segmentId, carbonInputSplit.getLocations(), carbonInputSplit.getLength()));
       }
 
-      Map<Integer, List<TableBlockInfo>> segmentToTableBlocksInfos = new HashMap<>();
+      Map<String, List<TableBlockInfo>> segmentToTableBlocksInfos = new HashMap<>();
       segmentToTableBlocksInfos.put(segmentId, tableBlockInfoList);
 
       // get Btree blocks for given segment
@@ -531,7 +532,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
 
   @Override protected List<FileStatus> listStatus(JobContext job) throws IOException {
     List<FileStatus> result = new ArrayList<FileStatus>();
-    int[] segmentsToConsider = getValidSegments(job);
+    String[] segmentsToConsider = getValidSegments(job);
     if (segmentsToConsider.length == 0) {
       throw new IOException("No segments found");
     }
@@ -540,7 +541,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return result;
   }
 
-  private void getFileStatusOfSegments(JobContext job, int[] segmentsToConsider,
+  private void getFileStatusOfSegments(JobContext job, String[] segmentsToConsider,
       List<FileStatus> result) throws IOException {
     String[] partitionsToConsider = getValidPartitions(job);
     if (partitionsToConsider.length == 0) {
@@ -559,7 +560,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       String partition = partitionsToConsider[i];
 
       for (int j = 0; j < segmentsToConsider.length; ++j) {
-        int segmentId = segmentsToConsider[j];
+        String segmentId = segmentsToConsider[j];
         Path segmentPath = new Path(tablePath.getCarbonDataDirectoryPath(partition, segmentId));
         FileSystem fs = segmentPath.getFileSystem(job.getConfiguration());
 
@@ -619,19 +620,19 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * @return updateExtension
    */
-  private int[] getValidSegments(JobContext job) throws IOException {
+  private String[] getValidSegments(JobContext job) throws IOException {
     String segmentString = job.getConfiguration().get(INPUT_SEGMENT_NUMBERS, "");
     // if no segments
-    if (segmentString.trim().isEmpty()) {
-      return new int[0];
+    if(segmentString.trim().isEmpty()){
+      return new String[0];
     }
 
     String[] segments = segmentString.split(",");
-    int[] segmentIds = new int[segments.length];
+    String[] segmentIds = new String[segments.length];
     int i = 0;
     try {
       for (; i < segments.length; i++) {
-        segmentIds[i] = Integer.parseInt(segments[i]);
+        segmentIds[i] = segments[i];
       }
     } catch (NumberFormatException e) {
       throw new IOException("segment no:" + segments[i] + " should be integer");
