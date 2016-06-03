@@ -31,6 +31,7 @@ import org.apache.spark.util.{FileUtils, SplitUtils}
 
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonDataLoadSchema, CarbonTableIdentifier}
+import org.carbondata.core.carbon.datastore.block.TableBlockInfo
 import org.carbondata.core.carbon.metadata.CarbonMetadata
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.carbondata.core.constants.CarbonCommonConstants
@@ -481,7 +482,7 @@ object CarbonDataRDDFactory extends Logging {
           val blockList = rawSplits.map(inputSplit => {
             val fileSplit = inputSplit.asInstanceOf[FileSplit]
             new TableBlockInfo(fileSplit.getPath.toString,
-              fileSplit.getStart, 1,
+              fileSplit.getStart, "1",
               fileSplit.getLocations, fileSplit.getLength
             )
           }

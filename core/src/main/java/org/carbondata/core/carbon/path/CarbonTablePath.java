@@ -183,7 +183,7 @@ public class CarbonTablePath extends Path {
     return false;
   }
 
-  private String getSegmentDir(String partitionId, Integer segmentId) {
+  private String getSegmentDir(String partitionId, String segmentId) {
     return getPartitionDir(partitionId) + File.separator + SEGMENT_PREFIX + segmentId;
   }
 
