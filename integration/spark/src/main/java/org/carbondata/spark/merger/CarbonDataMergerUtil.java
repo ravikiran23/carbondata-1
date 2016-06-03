@@ -160,15 +160,19 @@ public final class CarbonDataMergerUtil {
     for (LoadMetadataDetails loadDetail : loadDetails) {
 
       if (null != loadDetail.getMergedLoadName()) {
-        if (loadsToMerge.contains(loadDetail.getMergedLoadName()) && first) {
-          loadDetail.setMergedLoadName(MergedLoadName);
+        if (loadsToMerge.contains(loadDetail) && first) {
+          loadDetail.setMergedLoadName(MergedLoadName.substring(
+              MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
+                  + CarbonCommonConstants.LOAD_FOLDER.length(), MergedLoadName.length()));
           first = false;
         } else {
           continue;
         }
-      } else if (loadsToMerge.contains(loadDetail.getLoadName())) {
+      } else if (loadsToMerge.contains(loadDetail)) {
         if (first) {
-          loadDetail.setMergedLoadName(MergedLoadName);
+          loadDetail.setMergedLoadName(MergedLoadName.substring(
+              MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
+                  + CarbonCommonConstants.LOAD_FOLDER.length(), MergedLoadName.length()));
           first = false;
         } else {
           loadDetail.setLoadStatus(CarbonCommonConstants.MARKED_FOR_DELETE);

@@ -145,14 +145,17 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     try {
       CarbonTable carbonTable = getCarbonTable(job.getConfiguration());
       Object filterPredicates = getFilterPredicates(job.getConfiguration());
-      //Get the valid segments from the carbon store.
-      SegmentStatusManager.ValidSegmentsInfo validSegments =
-          new SegmentStatusManager(getAbsoluteTableIdentifier(job.getConfiguration()))
-              .getValidSegments();
-      setSegmentsToAccess(job.getConfiguration(), validSegments.listOfValidSegments);
-      if(validSegments.listOfValidSegments.isEmpty()) {
-        return new ArrayList<InputSplit>();
+      if(getValidSegments(job).length == 0) {
+        // Get the valid segments from the carbon store.
+        SegmentStatusManager.ValidSegmentsInfo validSegments =
+            new SegmentStatusManager(getAbsoluteTableIdentifier(job.getConfiguration()))
+                .getValidSegments();
+        if (validSegments.listOfValidSegments.isEmpty()) {
+          return new ArrayList<InputSplit>();
+        }
+        setSegmentsToAccess(job.getConfiguration(), validSegments.listOfValidSegments);
       }
+
       if (filterPredicates == null) {
         return getSplitsInternal(job);
       } else {

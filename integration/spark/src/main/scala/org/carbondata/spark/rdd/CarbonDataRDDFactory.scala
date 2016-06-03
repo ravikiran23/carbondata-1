@@ -325,6 +325,7 @@ object CarbonDataRDDFactory extends Logging {
             factTableName,
             validSegments
           )
+          carbonLoadModel.setFactStoreLocation(carbonMergerMapping.hdfsStoreLocation)
           val mergeStatus = new CarbonMergerRDD(
             sc.sparkContext,
             new MergeResultImpl(),
