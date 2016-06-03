@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.carbondata.common.logging.LogService;
 import org.carbondata.common.logging.LogServiceFactory;
@@ -29,6 +30,7 @@ import org.carbondata.core.carbon.AbsoluteTableIdentifier;
 import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.SegmentProperties;
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
+import org.carbondata.core.carbon.datastore.block.TaskBlockInfo;
 import org.carbondata.core.carbon.metadata.schema.table.CarbonTable;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonDimension;
 import org.carbondata.core.carbon.metadata.schema.table.column.CarbonMeasure;
@@ -52,7 +54,7 @@ public class CarbonCompactionExecutor {
   private final SegmentProperties segmentProperties;
   private final String schemaName;
   private final String factTableName;
-  private final Map<String, Map<String, List<TableBlockInfo>>> segmentMapping;
+  private final Map<String, TaskBlockInfo> segmentMapping;
   private final String storePath;
   private CarbonTable carbonTable;
 
@@ -68,7 +70,7 @@ public class CarbonCompactionExecutor {
    * @param storePath
    * @param carbonTable
    */
-  public CarbonCompactionExecutor(Map<String, Map<String, List<TableBlockInfo>>> segmentMapping,
+  public CarbonCompactionExecutor(Map<String, TaskBlockInfo> segmentMapping,
       SegmentProperties segmentProperties, String schemaName, String factTableName,
       String storePath, CarbonTable carbonTable) {
 
@@ -94,16 +96,20 @@ public class CarbonCompactionExecutor {
     List<CarbonIterator<BatchRawResult>> resultList =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
+    List<TableBlockInfo> list = null;
+    QueryModel model = prepareQueryModel(list);
     // iterate each seg ID
-    for (Map.Entry<String, Map<String, List<TableBlockInfo>>> taskMap : segmentMapping.entrySet()) {
-      // for each segment
-      Map<String, List<TableBlockInfo>> taskBlockListMapping = taskMap.getValue();
+    for (Map.Entry<String, TaskBlockInfo> taskMap : segmentMapping.entrySet()) {
+      // for each segment get taskblock info
+      TaskBlockInfo taskBlockInfo = taskMap.getValue();
+      Set<String> taskBlockListMapping = taskBlockInfo.getTaskSet();
 
-      for (Map.Entry<String, List<TableBlockInfo>> blockList : taskBlockListMapping.entrySet()) {
+      for (String task : taskBlockListMapping) {
 
-        List<TableBlockInfo> list = blockList.getValue();
+        list = taskBlockInfo.getTableBlockInfoList(task);
         Collections.sort(list);
-        resultList.add(executeBlockList(list));
+        model.setTableBlockInfos(list);
+        resultList.add(executeBlockList(list, model));
 
       }
     }
@@ -116,10 +122,10 @@ public class CarbonCompactionExecutor {
    * @param blockList
    * @return
    */
-  public CarbonIterator<BatchRawResult> executeBlockList(List<TableBlockInfo> blockList) {
+  public CarbonIterator<BatchRawResult> executeBlockList(List<TableBlockInfo> blockList,
+      QueryModel model) {
 
-    QueryModel model = prepareQueryModel(blockList);
-
+    model.setTableBlockInfos(blockList);
     this.queryExecutor = QueryExecutorFactory.getQueryExecutor(model);
     CarbonIterator<BatchRawResult> iter = null;
     try {

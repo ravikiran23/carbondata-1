@@ -58,6 +58,14 @@ public final class CarbonDataMergerUtil {
   private static final LogService LOGGER =
       LogServiceFactory.getLogService(CarbonDataMergerUtil.class.getName());
 
+  private static String isLoadMergeEnabled = CarbonProperties.getInstance()
+      .getProperty(CarbonCommonConstants.ENABLE_LOAD_MERGE,
+          CarbonCommonConstants.DEFAULT_ENABLE_LOAD_MERGE);
+
+  private static String isPreserveSegmentEnabled = CarbonProperties.getInstance()
+      .getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS,
+          CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS);
+
   private CarbonDataMergerUtil() {
 
   }
@@ -109,12 +117,10 @@ public final class CarbonDataMergerUtil {
    */
 
   public static boolean checkIfLoadMergingRequired() {
-    //load merge is not supported as per new store format
-    //moving the load merge check in early to avoid unnecessary load listing casusing IOException
-    String isLoadMergeEnabled = CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.ENABLE_LOAD_MERGE,
-            CarbonCommonConstants.DEFAULT_ENABLE_LOAD_MERGE);
-
+    // load merge is not supported as per new store format
+    // moving the load merge check in early to avoid unnecessary load listing casusing IOException
+    // check whether carbons segment merging operation is enabled or not.
+    // default will be false.
     if (isLoadMergeEnabled.equalsIgnoreCase("false")) {
       return false;
     }
@@ -358,15 +364,15 @@ public final class CarbonDataMergerUtil {
 
       boolean first = true;
       Date segDate1 = null;
+      SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
       for (LoadMetadataDetails segment : listOfSegmentsBelowThresholdSize) {
 
         if (first) {
-          segDate1 = initializeFirstSegment(loadsOfSameDate, segDate1, segment);
+          segDate1 = initializeFirstSegment(loadsOfSameDate, segment, sdf);
           first = false;
           continue;
         }
         String segmentDate = segment.getLoadStartTime();
-        SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
         Date segDate2 = null;
         try {
           segDate2 = sdf.parse(segmentDate);
@@ -382,7 +388,7 @@ public final class CarbonDataMergerUtil {
         else if (loadsOfSameDate.size() < 2) {
           loadsOfSameDate.removeAll(loadsOfSameDate);
           // need to add the next segment as first and  to check further
-          segDate1 = initializeFirstSegment(loadsOfSameDate, segDate1, segment);
+          segDate1 = initializeFirstSegment(loadsOfSameDate, segment, sdf);
         } else { // case where a load is beyond merge date and there is at least 2 loads to merge.
           break;
         }
@@ -396,14 +402,13 @@ public final class CarbonDataMergerUtil {
 
   /**
    * @param loadsOfSameDate
-   * @param segDate1
    * @param segment
    * @return
    */
   private static Date initializeFirstSegment(List<LoadMetadataDetails> loadsOfSameDate,
-      Date segDate1, LoadMetadataDetails segment) {
+      LoadMetadataDetails segment, SimpleDateFormat sdf) {
     String baselineLoadStartTime = segment.getLoadStartTime();
-    SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
+    Date segDate1 = null;
     try {
       segDate1 = sdf.parse(baselineLoadStartTime);
     } catch (ParseException e) {
@@ -506,38 +511,25 @@ public final class CarbonDataMergerUtil {
     return segmentsToBeMerged;
   }
 
+  /**
+   * checks number of loads to be preserved and returns remaining valid segments
+   * @param carbonLoadModel
+   * @return
+   */
   private static List<LoadMetadataDetails> checkPreserveSegmentsPropertyReturnRemaining(
       CarbonLoadModel carbonLoadModel) {
 
+    int numberOfSegmentsToBePreserved = 0;
     // check whether the preserving of the segments from merging is enabled or not.
-    String isPreserveSegmentEnabled = CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS,
-            CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS);
-
     if (isPreserveSegmentEnabled.equalsIgnoreCase("true")) {
-      int numberOfSegmentsToBePreserved = 0;
       // get the number of loads to be preserved.
-      try {
-        numberOfSegmentsToBePreserved = Integer.parseInt(CarbonProperties.getInstance()
-            .getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS_NUMBER,
-                CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS_NUMBER));
-      } catch (NumberFormatException e) {
-        numberOfSegmentsToBePreserved =
-            Integer.parseInt(CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS_NUMBER);
-      }
-
-      // get the number of valid segments and retain the latest loads from merging.
-      return CarbonDataMergerUtil
-          .getValidLoadDetailsWithRetaining(carbonLoadModel.getLoadMetadataDetails(),
-              numberOfSegmentsToBePreserved);
-
-    } else {
-      // if no need to preserve any segments then return the valid segments which can be merged.
-
+      numberOfSegmentsToBePreserved =
+          CarbonProperties.getInstance().getNumberOfSegmentsToBePreserved();
     }
-    // return valid segment details .
+    // get the number of valid segments and retain the latest loads from merging.
     return CarbonDataMergerUtil
-        .getValidLoadDetailsWithRetaining(carbonLoadModel.getLoadMetadataDetails(), 0);
+        .getValidLoadDetailsWithRetaining(carbonLoadModel.getLoadMetadataDetails(),
+            numberOfSegmentsToBePreserved);
   }
 
   /**
@@ -608,23 +600,11 @@ public final class CarbonDataMergerUtil {
     long compactionSize = 0;
     switch (compactionType) {
       case MINOR_COMPACTION:
-        try {
-          compactionSize = Long.parseLong(CarbonProperties.getInstance()
-              .getProperty(CarbonCommonConstants.MINOR_COMPACTION_SIZE,
-                  CarbonCommonConstants.DEFAULT_MINOR_COMPACTION_SIZE));
-        } catch (NumberFormatException e) {
-          compactionSize = Long.parseLong(CarbonCommonConstants.DEFAULT_MINOR_COMPACTION_SIZE);
-        }
+        compactionSize = CarbonProperties.getInstance().getMinorCompactionSize();
         break;
 
       case MAJOR_COMPACTION:
-        try {
-          compactionSize = Long.parseLong(CarbonProperties.getInstance()
-              .getProperty(CarbonCommonConstants.MAJOR_COMPACTION_SIZE,
-                  CarbonCommonConstants.DEFAULT_MAJOR_COMPACTION_SIZE));
-        } catch (NumberFormatException e) {
-          compactionSize = Long.parseLong(CarbonCommonConstants.DEFAULT_MAJOR_COMPACTION_SIZE);
-        }
+        compactionSize = CarbonProperties.getInstance().getMajorCompactionSize();
         break;
       default: // this case can not come.
     }

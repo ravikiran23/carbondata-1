@@ -25,20 +25,20 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.execution.command.Partitioner
+import org.apache.spark.sql.execution.command.CarbonMergerMapping
 
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
-import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo}
+import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo, TaskBlockInfo}
 import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.iterator.CarbonIterator
 import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
-import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil, RowResultMerger}
+import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor,
+CarbonCompactionUtil, RowResultMerger}
 import org.carbondata.lcm.status.SegmentStatusManager
 import org.carbondata.query.carbon.result.{BatchRawResult, RowResult}
-import org.carbondata.query.filter.resolver.FilterResolverIntf
 import org.carbondata.spark.MergeResult
 import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
 import org.carbondata.spark.merger.CarbonDataMergerUtil
@@ -50,23 +50,22 @@ class CarbonMergerRDD[K, V](
   sc: SparkContext,
   result: MergeResult[K, V],
   carbonLoadModel: CarbonLoadModel,
-  storeLocation: String,
-  hdfsStoreLocation: String,
-  partitioner: Partitioner,
   currentRestructNumber: Integer,
-  metadataFilePath: String,
   loadsToMerge: List[LoadMetadataDetails],
-  mergedLoadName: String,
-  kettleHomePath: String,
-  cubeCreationTime: Long,
-  schemaName: String,
-  factTableName: String,
-  commaSeparatedValidSegments: String)
+  carbonMergerMapping : CarbonMergerMapping)
   extends RDD[(K, V)](sc, Nil) with Logging {
 
   val defaultParallelism = sc.defaultParallelism
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
 
+  val storeLocation = carbonMergerMapping.storeLocation
+  val hdfsStoreLocation = carbonMergerMapping.hdfsStoreLocation
+  val metadataFilePath = carbonMergerMapping.metadataFilePath
+  val mergedLoadName = carbonMergerMapping.mergedLoadName
+  val kettleHomePath = carbonMergerMapping.kettleHomePath
+  val cubeCreationTime = carbonMergerMapping.cubeCreationTime
+  val schemaName = carbonMergerMapping.schemaName
+  val factTableName = carbonMergerMapping.factTableName
   override def compute(theSplit: Partition, context: TaskContext): Iterator[(K, V)] = {
     val iter = new Iterator[(K, V)] {
       var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
@@ -74,8 +73,8 @@ class CarbonMergerRDD[K, V](
       val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
 
       val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
-        .getTableName;
-      CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation);
+        .getTableName
+      CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
 
       // sorting the table block info List.
       // Collections.sort(tableBlockInfoList1)
@@ -86,7 +85,7 @@ class CarbonMergerRDD[K, V](
       carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
         .readLoadMetadata(metadataFilePath).toList.asJava)
 
-      val segmentMapping: java.util.Map[String, java.util.Map[String, List[TableBlockInfo]]] =
+      val segmentMapping: java.util.Map[String, TaskBlockInfo] =
         CarbonCompactionUtil.createMappingForSegments(tableBlockInfoList)
 
       val dataFileMetadataSegMapping: java.util.Map[String, List[DataFileFooter]] =
@@ -112,7 +111,7 @@ class CarbonMergerRDD[K, V](
       )
 
       // fire a query and get the results.
-      val result2: util.List[CarbonIterator[BatchRawResult]] = exec.processTableBlocks();
+      val result2: util.List[CarbonIterator[BatchRawResult]] = exec.processTableBlocks()
 
       val mergeNumber = mergedLoadName
         .substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
@@ -124,8 +123,8 @@ class CarbonMergerRDD[K, V](
         carbonLoadModel.getTaskNo
       )
 
-      carbonLoadModel.setSegmentId(mergeNumber);
-      carbonLoadModel.setPartitionId(theSplit.index.toString);
+      carbonLoadModel.setSegmentId(mergeNumber)
+      carbonLoadModel.setPartitionId(theSplit.index.toString)
       val merger = new RowResultMerger(result2,
         schemaName,
         factTableName,
@@ -165,24 +164,18 @@ class CarbonMergerRDD[K, V](
   }
 
   override def getPartitions: Array[Partition] = {
-    val startTime = System.currentTimeMillis();
+    val startTime = System.currentTimeMillis()
     val absoluteTableIdentifier: AbsoluteTableIdentifier = new AbsoluteTableIdentifier(
-      hdfsStoreLocation,
-      new
-          CarbonTableIdentifier(
-            schemaName,
-            factTableName
-          )
+      hdfsStoreLocation, new CarbonTableIdentifier(schemaName, factTableName)
     )
     val (carbonInputFormat: CarbonInputFormat[RowResult], job: Job) =
       QueryPlanUtil.createCarbonInputFormat(absoluteTableIdentifier)
-
     val result = new util.ArrayList[Partition](defaultParallelism)
-    val filterResolver: FilterResolverIntf = null
     val mapsOfNodeBlockMapping: util.List[util.Map[String, util.List[TableBlockInfo]]] = new
         java.util.ArrayList[util.Map[String, util.List[TableBlockInfo]]]()
     var noOfBlocks = 0
-    for (eachSeg <- commaSeparatedValidSegments.split(',')) {
+    for (eachSeg <- carbonMergerMapping.validSegments) {
+
       job.getConfiguration.set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS, eachSeg)
 
       // get splits
@@ -201,7 +194,7 @@ class CarbonMergerRDD[K, V](
 
     // combining the segments output i.e combining list of maps.
     var nodeBlockMapping: util.Map[String, util.List[TableBlockInfo]] =
-      CarbonDataMergerUtil.combineNodeBlockMaps(mapsOfNodeBlockMapping);
+      CarbonDataMergerUtil.combineNodeBlockMaps(mapsOfNodeBlockMapping)
 
 
     var i = 0
@@ -210,7 +203,7 @@ class CarbonMergerRDD[K, V](
       val blocksPerNode = entry._2
       if (blocksPerNode.size() != 0) {
         result.add(new CarbonSparkPartition(id, i, Seq(entry._1).toArray, blocksPerNode))
-        i += 1;
+        i += 1
       }
     }
    // val noOfBlocks = blockList.size
@@ -222,17 +215,13 @@ class CarbonMergerRDD[K, V](
     logInfo("Time taken to identify Blocks to scan : " + (System
       .currentTimeMillis() - startTime)
     )
-    for (j <- 0 to result.size() - 1) {
+    for (j <- 0 until result.size() - 1) {
       val cp = result.get(j).asInstanceOf[CarbonSparkPartition]
       logInfo(s"Node : " + cp.locations.toSeq.mkString(",")
         + ", No.Of Blocks : " + cp.tableBlockInfos.size()
       )
     }
     result.toArray(new Array[Partition](result.size()))
-  }
-
-  override def checkpoint() {
-    // Do nothing. Hadoop RDD should not be checkpointed.
   }
 }
 

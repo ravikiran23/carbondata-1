@@ -2,11 +2,15 @@ package org.carbondata.spark.testsuite.datacompaction
 
 import java.io.File
 
+import scala.collection.JavaConverters._
+
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.common.util.CarbonHiveContext._
 import org.apache.spark.sql.common.util.QueryTest
+import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
+import org.carbondata.lcm.status.SegmentStatusManager
 import org.scalatest.BeforeAndAfterAll
 
 /**
@@ -37,20 +41,56 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "yyyy/mm/dd")
     sql("LOAD DATA fact from '" + csvFilePath1 + "' INTO CUBE normalcompaction PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
-    );
+    )
     sql("LOAD DATA fact from '" + csvFilePath2 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
-    );
+    )
     // compaction will happen here.
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
-    );
+    )
 
   }
 
 
   test("select country from normalcompaction") {
     // check answers after compaction.
+    checkAnswer(
+      sql("select country from normalcompaction"),
+      Seq(Row("america"),
+        Row("canada"),
+        Row("chile"),
+        Row("china"),
+        Row("england"),
+        Row("burma"),
+        Row("butan"),
+        Row("mexico"),
+        Row("newzealand"),
+        Row("westindies"),
+        Row("china"),
+        Row("india"),
+        Row("iran"),
+        Row("iraq"),
+        Row("ireland")
+      )
+    )
+  }
+
+  test("delete merged folder and execute query") {
+    // delete merged segments
+    sql("clean files for table normalcompaction")
+
+    val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
+        AbsoluteTableIdentifier(
+          CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
+          new CarbonTableIdentifier("default", "normalcompaction")
+        )
+    )
+    // merged segment should not be there
+    val segments   = segmentStatusManager.getValidSegments.listOfValidSegments.asScala.toList
+    assert(!segments.contains("1"))
+
+    // now check the answers it should be same.
     checkAnswer(
       sql("select country from normalcompaction"),
       Seq(Row("america"),

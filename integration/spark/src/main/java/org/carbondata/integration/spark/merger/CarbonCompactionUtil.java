@@ -26,6 +26,7 @@ import java.util.Map;
 
 import org.carbondata.core.carbon.CarbonTableIdentifier;
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo;
+import org.carbondata.core.carbon.datastore.block.TaskBlockInfo;
 import org.carbondata.core.carbon.datastore.exception.IndexBuilderException;
 import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter;
 import org.carbondata.core.carbon.path.CarbonStorePath;
@@ -46,27 +47,29 @@ public class CarbonCompactionUtil {
    * @param tableBlockInfoList
    * @return
    */
-  public static Map<String, Map<String, List<TableBlockInfo>>> createMappingForSegments(
+  public static Map<String, TaskBlockInfo> createMappingForSegments(
       List<TableBlockInfo> tableBlockInfoList) {
 
-    Map<String, Map<String, List<TableBlockInfo>>> segmentBlockInfoMapping =
+    // stores taskBlockInfo of each segment
+    Map<String, TaskBlockInfo> segmentBlockInfoMapping =
         new HashMap<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+
 
     for (TableBlockInfo info : tableBlockInfoList) {
       String segId = info.getSegmentId();
       // check if segId is already present in map
-      Map<String, List<TableBlockInfo>> taskMapping = segmentBlockInfoMapping.get(segId);
+      TaskBlockInfo taskBlockInfoMapping = segmentBlockInfoMapping.get(segId);
       // extract task ID from file Path.
       String taskNo = CarbonTablePath.DataFileUtil.getTaskNo(info.getFilePath());
-      if (null == taskMapping) {
-        taskMapping = new HashMap<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
-        groupCorrespodingInfoBasedOnTask(info, taskMapping, taskNo);
-
-        //put the inner Map to outer Map
-        segmentBlockInfoMapping.put(segId, taskMapping);
-      } else  // if task map it self is not there.
+      // if taskBlockInfo is not there, then create and add
+      if (null == taskBlockInfoMapping) {
+        taskBlockInfoMapping = new TaskBlockInfo();
+        groupCorrespodingInfoBasedOnTask(info, taskBlockInfoMapping, taskNo);
+        // put the taskBlockInfo with respective segment id
+        segmentBlockInfoMapping.put(segId, taskBlockInfoMapping);
+      } else
       {
-        groupCorrespodingInfoBasedOnTask(info, taskMapping, taskNo);
+        groupCorrespodingInfoBasedOnTask(info, taskBlockInfoMapping, taskNo);
       }
     }
     return segmentBlockInfoMapping;
@@ -76,20 +79,19 @@ public class CarbonCompactionUtil {
   /**
    * Grouping the taskNumber and list of TableBlockInfo.
    * @param info
-   * @param taskMapping
+   * @param taskBlockMapping
    * @param taskNo
    */
   private static void groupCorrespodingInfoBasedOnTask(TableBlockInfo info,
-      Map<String, List<TableBlockInfo>> taskMapping, String taskNo) {
+      TaskBlockInfo taskBlockMapping, String taskNo) {
     // get the corresponding list from task mapping.
-    List<TableBlockInfo> blockLists;
-    if (null != taskMapping.get(taskNo)) {
-      blockLists = taskMapping.get(taskNo);
+    List<TableBlockInfo> blockLists = taskBlockMapping.getTableBlockInfoList(taskNo);
+    if (null != blockLists) {
       blockLists.add(info);
     } else {
       blockLists = new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
       blockLists.add(info);
-      taskMapping.put(taskNo, blockLists);
+      taskBlockMapping.addTableBlockInfoList(taskNo, blockLists);
     }
   }
 
