@@ -39,12 +39,15 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
 
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "yyyy/mm/dd")
+    CarbonProperties.getInstance().addProperty("carbon.enable.load.merge", "true")
     sql("LOAD DATA fact from '" + csvFilePath1 + "' INTO CUBE normalcompaction PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
+    CarbonProperties.getInstance().addProperty("carbon.enable.load.merge", "true")
     sql("LOAD DATA fact from '" + csvFilePath2 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
+    CarbonProperties.getInstance().addProperty("carbon.enable.load.merge", "true")
     // compaction will happen here.
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
