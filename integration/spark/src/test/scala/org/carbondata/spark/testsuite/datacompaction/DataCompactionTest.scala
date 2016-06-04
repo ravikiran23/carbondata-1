@@ -48,6 +48,10 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
     CarbonProperties.getInstance().addProperty("carbon.enable.load.merge", "true")
+    System.out
+      .println("load merge status is " + CarbonProperties.getInstance()
+        .getProperty("carbon.enable.load.merge")
+      )
     // compaction will happen here.
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
@@ -116,7 +120,7 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
   }
 
   override def afterAll {
-    sql("drop cube normalcompaction")
+    /* sql("drop cube normalcompaction") */
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT,
         CarbonCommonConstants.CARBON_TIMESTAMP_DEFAULT_FORMAT
