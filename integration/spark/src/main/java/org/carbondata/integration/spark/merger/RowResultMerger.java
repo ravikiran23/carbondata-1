@@ -245,7 +245,7 @@ public class RowResultMerger {
     Arrays.fill(aggType, 'n');
     int i = 0;
     for (CarbonMeasure msr : segprop.getMeasures()) {
-      aggType[i++] = DataTypeUtil.getAggType(msr.getDataType().toString());
+      aggType[i++] = DataTypeUtil.getAggType(msr.getDataType());
     }
     carbonFactDataHandlerModel.setAggType(aggType);
     carbonFactDataHandlerModel.setFactDimLens(segprop.getDimColumnsCardinality());
