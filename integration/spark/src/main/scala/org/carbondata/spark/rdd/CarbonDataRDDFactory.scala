@@ -301,6 +301,7 @@ object CarbonDataRDDFactory extends Logging {
 
     // for handling of the segment Merging.
     def handleSegmentMerging(cubeCreationTime: Long): Unit = {
+      logger.info("compaction need status is " + CarbonDataMergerUtil.checkIfLoadMergingRequired())
       if (CarbonDataMergerUtil.checkIfLoadMergingRequired()) {
         val compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MINOR_COMPACTION)
         val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
