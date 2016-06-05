@@ -306,8 +306,9 @@ object CarbonDataRDDFactory extends Logging {
         val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
           hdfsStoreLocation, carbonLoadModel, partitioner.partitionCount, compactionSize
         )
-
+        logger.info("loads identified for merge is " + loadsToMerge)
         if (loadsToMerge.size() > 1) {
+          logger.info("loads to merge which can be merged are " + loadsToMerge)
           val mergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
           var finalMergeStatus = true
           val schemaName: String = carbonLoadModel.getDatabaseName

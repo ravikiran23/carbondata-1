@@ -322,6 +322,8 @@ public final class CarbonDataMergerUtil {
 
     // identify the segments to merge based on the Size of the segments across partition.
 
+    LOGGER.info("list of segments after preserve is " + listOfSegmentsAfterPreserve);
+
     List<LoadMetadataDetails> listOfSegmentsBelowThresholdSize =
         identifySegmentsToBeMergedBasedOnSize(compactionSize, listOfSegmentsAfterPreserve,
             carbonLoadModel, partitionCount, storeLocation);
@@ -524,6 +526,7 @@ public final class CarbonDataMergerUtil {
       CarbonLoadModel carbonLoadModel) {
 
     int numberOfSegmentsToBePreserved = 0;
+    LOGGER.info("preserve segments property is " + isPreserveSegmentEnabled);
     // check whether the preserving of the segments from merging is enabled or not.
     if (isPreserveSegmentEnabled.equalsIgnoreCase("true")) {
       // get the number of loads to be preserved.
