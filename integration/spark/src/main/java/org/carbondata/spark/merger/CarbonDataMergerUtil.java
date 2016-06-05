@@ -58,10 +58,6 @@ public final class CarbonDataMergerUtil {
   private static final LogService LOGGER =
       LogServiceFactory.getLogService(CarbonDataMergerUtil.class.getName());
 
-  private static String isLoadMergeEnabled = CarbonProperties.getInstance()
-      .getProperty(CarbonCommonConstants.ENABLE_LOAD_MERGE,
-          CarbonCommonConstants.DEFAULT_ENABLE_LOAD_MERGE);
-
   private static String isPreserveSegmentEnabled = CarbonProperties.getInstance()
       .getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS,
           CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS);
@@ -118,9 +114,12 @@ public final class CarbonDataMergerUtil {
 
   public static boolean checkIfLoadMergingRequired() {
     // load merge is not supported as per new store format
-    // moving the load merge check in early to avoid unnecessary load listing casusing IOException
+    // moving the load merge check in early to avoid unnecessary load listing causing IOException
     // check whether carbons segment merging operation is enabled or not.
     // default will be false.
+    String isLoadMergeEnabled = CarbonProperties.getInstance()
+        .getProperty(CarbonCommonConstants.ENABLE_LOAD_MERGE,
+            CarbonCommonConstants.DEFAULT_ENABLE_LOAD_MERGE);
     if (isLoadMergeEnabled.equalsIgnoreCase("false")) {
       return false;
     }
