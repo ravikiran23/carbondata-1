@@ -329,12 +329,19 @@ object CarbonDataRDDFactory extends Logging {
             validSegments
           )
           carbonLoadModel.setFactStoreLocation(carbonMergerMapping.hdfsStoreLocation)
+          val segmentStatusManager = new SegmentStatusManager(new AbsoluteTableIdentifier
+          (CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION),
+            new CarbonTableIdentifier(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
+          )
+          )
+          carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
+            .readLoadMetadata(carbonTable.getMetaDataFilepath()).toList.asJava
+          )
+
           val mergeStatus = new CarbonMergerRDD(
             sc.sparkContext,
             new MergeResultImpl(),
             carbonLoadModel,
-            currentRestructNumber,
-            loadsToMerge,
             carbonMergerMapping
           ).collect
 

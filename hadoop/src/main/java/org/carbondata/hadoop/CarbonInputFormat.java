@@ -145,7 +145,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     try {
       CarbonTable carbonTable = getCarbonTable(job.getConfiguration());
       Object filterPredicates = getFilterPredicates(job.getConfiguration());
-      if(getValidSegments(job).length == 0) {
+      if (getValidSegments(job).length == 0) {
         // Get the valid segments from the carbon store.
         SegmentStatusManager.ValidSegmentsInfo validSegments =
             new SegmentStatusManager(getAbsoluteTableIdentifier(job.getConfiguration()))
@@ -377,8 +377,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   private List<DataRefNode> getDataBlocksOfSegment(JobContext job,
       FilterExpressionProcessor filterExpressionProcessor,
       AbsoluteTableIdentifier absoluteTableIdentifier, FilterResolverIntf resolver,
-      String segmentId)
-      throws IndexBuilderException, IOException {
+      String segmentId) throws IndexBuilderException, IOException {
 
     Map<String, AbstractIndex> segmentIndexMap =
         getSegmentAbstractIndexs(job, absoluteTableIdentifier, segmentId);
@@ -481,9 +480,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     try {
       CarbonQueryPlan queryPlan =
           CarbonInputFormatUtil.createQueryPlan(carbonTable, configuration.get(COLUMN_PROJECTION));
-      queryModel = QueryModel.createModel(getAbsoluteTableIdentifier(configuration),
-          queryPlan,
-          carbonTable);
+      queryModel =
+          QueryModel.createModel(getAbsoluteTableIdentifier(configuration), queryPlan, carbonTable);
       Object filterPredicates = getFilterPredicates(configuration);
       if (filterPredicates != null) {
         if (filterPredicates instanceof Expression) {
@@ -511,8 +509,8 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
         Class<?> myClass = Class.forName(readSupportClass);
         Constructor<?> constructor = myClass.getConstructors()[0];
         Object object = constructor.newInstance();
-        if(object instanceof CarbonReadSupport) {
-          readSupport = (CarbonReadSupport)object;
+        if (object instanceof CarbonReadSupport) {
+          readSupport = (CarbonReadSupport) object;
         }
       } catch (ClassNotFoundException ex) {
         LOG.error("Class " + readSupportClass + "not found", ex);
@@ -626,7 +624,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   private String[] getValidSegments(JobContext job) throws IOException {
     String segmentString = job.getConfiguration().get(INPUT_SEGMENT_NUMBERS, "");
     // if no segments
-    if(segmentString.trim().isEmpty()){
+    if (segmentString.trim().isEmpty()) {
       return new String[0];
     }
 

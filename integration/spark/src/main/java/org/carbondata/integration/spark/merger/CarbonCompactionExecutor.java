@@ -91,7 +91,7 @@ public class CarbonCompactionExecutor {
    * For processing of the table blocks.
    * @return List of Carbon iterators
    */
-  public List<CarbonIterator<BatchRawResult>> processTableBlocks() {
+  public List<CarbonIterator<BatchRawResult>> processTableBlocks() throws QueryExecutionException {
 
     List<CarbonIterator<BatchRawResult>> resultList =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
@@ -123,7 +123,7 @@ public class CarbonCompactionExecutor {
    * @return
    */
   public CarbonIterator<BatchRawResult> executeBlockList(List<TableBlockInfo> blockList,
-      QueryModel model) {
+      QueryModel model) throws QueryExecutionException {
 
     model.setTableBlockInfos(blockList);
     this.queryExecutor = QueryExecutorFactory.getQueryExecutor(model);
@@ -132,6 +132,7 @@ public class CarbonCompactionExecutor {
       iter = queryExecutor.execute(model);
     } catch (QueryExecutionException e) {
       LOGGER.error(e.getMessage());
+      throw e;
     }
 
     return iter;

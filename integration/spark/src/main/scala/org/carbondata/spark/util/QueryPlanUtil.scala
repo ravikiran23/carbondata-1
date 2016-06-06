@@ -17,8 +17,6 @@
 
 package org.carbondata.spark.util
 
-import java.lang
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.mapred.JobConf
@@ -27,7 +25,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 
 import org.carbondata.core.carbon.AbsoluteTableIdentifier
 import org.carbondata.hadoop.CarbonInputFormat
-import org.carbondata.lcm.status.SegmentStatusManager
 import org.carbondata.query.carbon.result.RowResult
 
 /**
@@ -46,10 +43,6 @@ object QueryPlanUtil {
     FileInputFormat.addInputPath(job, new Path(absoluteTableIdentifier.getStorePath))
     CarbonInputFormat.setTableToAccess(job.getConfiguration,
       absoluteTableIdentifier.getCarbonTableIdentifier)
-    val validSegments = new SegmentStatusManager(absoluteTableIdentifier).getValidSegments
-    val validSegmentNos =
-      validSegments.listOfValidSegments
-    carbonInputFormat.setSegmentsToAccess(job.getConfiguration, validSegmentNos)
     (carbonInputFormat, job)
   }
 }

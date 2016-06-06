@@ -17,8 +17,8 @@
 
 package org.carbondata.spark.rdd
 
-import java.util.{List}
 import java.util
+import java.util.List
 
 import scala.collection.JavaConverters._
 
@@ -27,17 +27,15 @@ import org.apache.spark._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.execution.command.CarbonMergerMapping
 
+import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
 import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo, TaskBlockInfo}
 import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.iterator.CarbonIterator
-import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
-import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor,
-CarbonCompactionUtil, RowResultMerger}
-import org.carbondata.lcm.status.SegmentStatusManager
+import org.carbondata.integration.spark.merger.{CarbonCompactionExecutor, CarbonCompactionUtil, RowResultMerger}
 import org.carbondata.query.carbon.result.{BatchRawResult, RowResult}
 import org.carbondata.spark.MergeResult
 import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
@@ -50,8 +48,6 @@ class CarbonMergerRDD[K, V](
   sc: SparkContext,
   result: MergeResult[K, V],
   carbonLoadModel: CarbonLoadModel,
-  currentRestructNumber: Integer,
-  loadsToMerge: List[LoadMetadataDetails],
   carbonMergerMapping : CarbonMergerMapping)
   extends RDD[(K, V)](sc, Nil) with Logging {
 
@@ -62,11 +58,10 @@ class CarbonMergerRDD[K, V](
   val hdfsStoreLocation = carbonMergerMapping.hdfsStoreLocation
   val metadataFilePath = carbonMergerMapping.metadataFilePath
   val mergedLoadName = carbonMergerMapping.mergedLoadName
-  val kettleHomePath = carbonMergerMapping.kettleHomePath
-  val cubeCreationTime = carbonMergerMapping.cubeCreationTime
   val schemaName = carbonMergerMapping.schemaName
   val factTableName = carbonMergerMapping.factTableName
   override def compute(theSplit: Partition, context: TaskContext): Iterator[(K, V)] = {
+    val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
     val iter = new Iterator[(K, V)] {
       var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
       carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
@@ -79,11 +74,6 @@ class CarbonMergerRDD[K, V](
       // sorting the table block info List.
       // Collections.sort(tableBlockInfoList1)
       var tableBlockInfoList = carbonSparkPartition.tableBlockInfos
-      var segmentStatusManager = new SegmentStatusManager(new AbsoluteTableIdentifier
-      (CarbonProperties.getInstance().getProperty(CarbonCommonConstants.STORE_LOCATION),
-        new CarbonTableIdentifier(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)))
-      carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
-        .readLoadMetadata(metadataFilePath).toList.asJava)
 
       val segmentMapping: java.util.Map[String, TaskBlockInfo] =
         CarbonCompactionUtil.createMappingForSegments(tableBlockInfoList)
@@ -105,21 +95,33 @@ class CarbonMergerRDD[K, V](
         colCardinality
       )
 
-
       val exec = new CarbonCompactionExecutor(segmentMapping, segmentProperties, schemaName,
         factTableName, hdfsStoreLocation, carbonLoadModel.getCarbonDataLoadSchema.getCarbonTable
       )
 
       // fire a query and get the results.
-      val result2: util.List[CarbonIterator[BatchRawResult]] = exec.processTableBlocks()
+      var result2: util.List[CarbonIterator[BatchRawResult]] = null
+      try {
+        result2 = exec.processTableBlocks()
+      } catch {
+        case e: Exception =>
+          LOGGER.error(e)
+          if (null != e.getMessage) {
+            sys.error("Exception occurred in query execution :: " + e.getMessage)
+          } else {
+            sys.error("Exception occurred in query execution.Please check logs.")
+          }
+      }
 
       val mergeNumber = mergedLoadName
         .substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
           CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()
         )
 
-      val tempStoreLoc = CarbonCompactionUtil.getTempLocation(schemaName, factTableName,
-        "0", mergeNumber,
+      val tempStoreLoc = CarbonCompactionUtil.getTempLocation(schemaName,
+        factTableName,
+        "0",
+        mergeNumber,
         carbonLoadModel.getTaskNo
       )
 
