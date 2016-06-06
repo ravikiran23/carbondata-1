@@ -105,7 +105,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   /**
    * Set List of segments to access
    */
-  public void setSegmentsToAccess(Configuration configuration, List<String> segmentNosList) {
+  private void setSegmentsToAccess(Configuration configuration, List<String> segmentNosList) {
 
     //serialize to comma separated string
     StringBuilder stringSegmentsBuilder = new StringBuilder();

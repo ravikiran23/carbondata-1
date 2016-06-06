@@ -127,7 +127,8 @@ class CarbonMergerRDD[K, V](
 
       carbonLoadModel.setSegmentId(mergeNumber)
       carbonLoadModel.setPartitionId(theSplit.index.toString)
-      val merger = new RowResultMerger(result2,
+      val merger =
+        new RowResultMerger(result2,
         schemaName,
         factTableName,
         segmentProperties,
@@ -195,7 +196,7 @@ class CarbonMergerRDD[K, V](
     }
 
     // combining the segments output i.e combining list of maps.
-    var nodeBlockMapping: util.Map[String, util.List[TableBlockInfo]] =
+    val nodeBlockMapping: util.Map[String, util.List[TableBlockInfo]] =
       CarbonDataMergerUtil.combineNodeBlockMaps(mapsOfNodeBlockMapping)
 
 
