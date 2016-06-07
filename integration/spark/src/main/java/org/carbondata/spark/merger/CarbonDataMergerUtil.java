@@ -166,11 +166,12 @@ public final class CarbonDataMergerUtil {
         MergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER)
             + CarbonCommonConstants.LOAD_FOLDER.length(), MergedLoadName.length());
 
+    String modificationOrDeletionTimeStamp = CarbonLoaderUtil.readCurrentTime();
     for (LoadMetadataDetails loadDetail : loadDetails) {
       // check if this segment is merged.
       if (loadsToMerge.contains(loadDetail)) {
         loadDetail.setLoadStatus(CarbonCommonConstants.SEGMENT_COMPACTED);
-        loadDetail.setModificationOrdeletionTimesStamp(CarbonLoaderUtil.readCurrentTime());
+        loadDetail.setModificationOrdeletionTimesStamp(modificationOrDeletionTimeStamp);
         loadDetail.setMergedLoadName(mergedLoadNumber);
       }
     }

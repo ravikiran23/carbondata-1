@@ -383,6 +383,8 @@ object CarbonDataRDDFactory extends Logging {
 
       var currentLoadCount = -1
       val convLoadDetails = carbonLoadModel.getLoadMetadataDetails.asScala
+      // taking the latest segment ID present.
+      // so that any other segments above this will be deleted.
       if (convLoadDetails.nonEmpty) {
         convLoadDetails.foreach { l =>
           var loadCount = 0
@@ -399,6 +401,9 @@ object CarbonDataRDDFactory extends Logging {
           }
         }
         currentLoadCount += 1
+        // Deleting the any partially loaded data if present.
+        // in some case the segment folder which is present in store will not have entry in status.
+        // so deleting those folders.
         CarbonLoaderUtil
           .deletePartialLoadDataIfExist(partitioner.partitionCount, carbonLoadModel.getDatabaseName,
             carbonLoadModel.getTableName, carbonLoadModel.getTableName, hdfsStoreLocation,
