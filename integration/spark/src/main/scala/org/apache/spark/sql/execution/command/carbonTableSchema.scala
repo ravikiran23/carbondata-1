@@ -1893,7 +1893,7 @@ private[sql] case class ShowLoads(
       val parser = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP)
 
       var loadMetadataDetailsSortedArray = loadMetadataDetailsArray.sortWith(
-        (l1, l2) => Integer.parseInt(l1.getLoadName) > Integer.parseInt(l2.getLoadName))
+        (l1, l2) => java.lang.Double.parseDouble(l1.getLoadName) > java.lang.Double.parseDouble(l2.getLoadName))
 
 
       if (limit.isDefined) {
