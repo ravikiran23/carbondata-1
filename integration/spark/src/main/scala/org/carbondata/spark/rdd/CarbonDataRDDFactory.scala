@@ -307,8 +307,6 @@ object CarbonDataRDDFactory extends Logging {
     val cubeCreationTime = CarbonEnv.getInstance(sqlContext).carbonCatalog
       .getCubeCreationTime(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
 
-    if (CarbonDataMergerUtil.checkIfLoadMergingRequired()) {
-
       if (null == carbonLoadModel.getLoadMetadataDetails) {
         readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
       }
@@ -331,7 +329,6 @@ object CarbonDataRDDFactory extends Logging {
         executor,
         compactionModel
       )
-    }
   }
 
   def startCompactionThreads(sqlContext: SQLContext,
@@ -415,8 +412,9 @@ object CarbonDataRDDFactory extends Logging {
 
     // for handling of the segment Merging.
     def handleSegmentMerging(cubeCreationTime: Long): Unit = {
-      logger.info("compaction need status is " + CarbonDataMergerUtil.checkIfLoadMergingRequired())
-      if (CarbonDataMergerUtil.checkIfLoadMergingRequired()) {
+      logger
+        .info("compaction need status is " + CarbonDataMergerUtil.checkIfAutoLoadMergingRequired())
+      if (CarbonDataMergerUtil.checkIfAutoLoadMergingRequired()) {
         val compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MINOR_COMPACTION)
 
         val executor: ExecutorService = Executors.newFixedThreadPool(1)

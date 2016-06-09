@@ -111,14 +111,14 @@ public final class CarbonDataMergerUtil {
    * @return
    */
 
-  public static boolean checkIfLoadMergingRequired() {
+  public static boolean checkIfAutoLoadMergingRequired() {
     // load merge is not supported as per new store format
     // moving the load merge check in early to avoid unnecessary load listing causing IOException
     // check whether carbons segment merging operation is enabled or not.
     // default will be false.
     String isLoadMergeEnabled = CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.ENABLE_LOAD_MERGE,
-            CarbonCommonConstants.DEFAULT_ENABLE_LOAD_MERGE);
+        .getProperty(CarbonCommonConstants.ENABLE_AUTO_LOAD_MERGE,
+            CarbonCommonConstants.DEFAULT_ENABLE_AUTO_LOAD_MERGE);
     if (isLoadMergeEnabled.equalsIgnoreCase("false")) {
       return false;
     }
