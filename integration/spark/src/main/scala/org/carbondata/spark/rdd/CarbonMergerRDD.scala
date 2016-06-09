@@ -129,7 +129,7 @@ class CarbonMergerRDD[K, V](
       )
 
       carbonLoadModel.setSegmentId(mergeNumber)
-      carbonLoadModel.setPartitionId(theSplit.index.toString)
+      carbonLoadModel.setPartitionId("0")
       val merger =
         new RowResultMerger(result2,
         schemaName,
