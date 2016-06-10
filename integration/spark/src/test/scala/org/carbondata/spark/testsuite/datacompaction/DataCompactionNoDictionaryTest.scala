@@ -44,11 +44,12 @@ class DataCompactionNoDictionaryTest extends QueryTest with BeforeAndAfterAll {
     sql("LOAD DATA fact from '" + csvFilePath2 + "' INTO CUBE noDictionaryCompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
-    // compaction will happen here.
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE noDictionaryCompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
-
+    // compaction will happen here.
+    sql("alter table noDictionaryCompaction compact 'major'"
+    )
   }
 
 
@@ -87,7 +88,10 @@ class DataCompactionNoDictionaryTest extends QueryTest with BeforeAndAfterAll {
     )
     // merged segment should not be there
     val segments   = segmentStatusManager.getValidSegments.listOfValidSegments.asScala.toList
-      assert(!segments.contains("1"))
+    assert(!segments.contains("0"))
+    assert(!segments.contains("1"))
+    assert(!segments.contains("2"))
+    assert(segments.contains("0.1"))
 
     // now check the answers it should be same.
     checkAnswer(

@@ -39,7 +39,6 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
 
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "yyyy/mm/dd")
-    CarbonProperties.getInstance().addProperty("carbon.enable.load.merge", "true")
     sql("LOAD DATA fact from '" + csvFilePath1 + "' INTO CUBE normalcompaction PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
@@ -55,6 +54,9 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
     // compaction will happen here.
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE normalcompaction  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
+    )
+    // compaction will happen here.
+    sql("alter table normalcompaction compact 'major'"
     )
 
   }
@@ -95,7 +97,10 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
     )
     // merged segment should not be there
     val segments   = segmentStatusManager.getValidSegments.listOfValidSegments.asScala.toList
+    assert(!segments.contains("0"))
     assert(!segments.contains("1"))
+    assert(!segments.contains("2"))
+    assert(segments.contains("0.1"))
 
     // now check the answers it should be same.
     checkAnswer(
