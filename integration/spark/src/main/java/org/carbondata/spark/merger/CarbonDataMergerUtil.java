@@ -248,6 +248,10 @@ public final class CarbonDataMergerUtil {
           .getProperty(CarbonCommonConstants.DAYS_ALLOWED_TO_COMPACT,
               CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT));
       if (numberOfDaysAllowedToMerge < 0 || numberOfDaysAllowedToMerge > 100) {
+        LOGGER.error(
+            "The specified value for property " + CarbonCommonConstants.DAYS_ALLOWED_TO_COMPACT
+                + " is incorrect."
+                + " Correct value should be in range of 0 -100. Taking the default value.");
         numberOfDaysAllowedToMerge =
             Long.parseLong(CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT);
       }
