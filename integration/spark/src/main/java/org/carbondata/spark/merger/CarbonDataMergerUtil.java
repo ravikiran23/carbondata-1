@@ -247,7 +247,7 @@ public final class CarbonDataMergerUtil {
       numberOfDaysAllowedToMerge = Long.parseLong(CarbonProperties.getInstance()
           .getProperty(CarbonCommonConstants.DAYS_ALLOWED_TO_COMPACT,
               CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT));
-      if (numberOfDaysAllowedToMerge < 0 || numberOfDaysAllowedToMerge > 20) {
+      if (numberOfDaysAllowedToMerge < 0 || numberOfDaysAllowedToMerge > 100) {
         numberOfDaysAllowedToMerge =
             Long.parseLong(CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT);
       }
