@@ -1095,7 +1095,7 @@ public final class CarbonCommonConstants {
   /**
    * Default property of the date based compaction.default will be false.
    */
-  public static final String DEFAULT_ENABLE_COMPACTION_BASED_ON_DATE = "true";
+  public static final String DEFAULT_ENABLE_COMPACTION_BASED_ON_DATE = "false";
 
   /**
    * This property will determine the loads of how many days can be compacted.
