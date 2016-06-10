@@ -307,28 +307,42 @@ object CarbonDataRDDFactory extends Logging {
     val cubeCreationTime = CarbonEnv.getInstance(sqlContext).carbonCatalog
       .getCubeCreationTime(carbonLoadModel.getDatabaseName, carbonLoadModel.getTableName)
 
-      if (null == carbonLoadModel.getLoadMetadataDetails) {
-        readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
+    if (null == carbonLoadModel.getLoadMetadataDetails) {
+      readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
+    }
+    // reading the start time of data load.
+    val loadStartTime = CarbonLoaderUtil.readCurrentTime()
+    carbonLoadModel.setFactTimeStamp(loadStartTime)
+
+    val executor: ExecutorService = Executors.newFixedThreadPool(1)
+
+    val compactionModel = CompactionModel(compactionSize, compactionType)
+
+    val lock = CarbonLockFactory
+      .getCarbonLockObj(carbonTable.getMetaDataFilepath, LockUsage.COMPACTION_LOCK)
+    try {
+
+      if (lock.lockWithRetries()) {
+
+        startCompactionThreads(sqlContext,
+          carbonLoadModel,
+          partitioner,
+          hdfsStoreLocation,
+          kettleHomePath,
+          storeLocation,
+          carbonTable,
+          cubeCreationTime,
+          executor,
+          compactionModel
+        )
       }
-      // reading the start time of data load.
-      val loadStartTime = CarbonLoaderUtil.readCurrentTime()
-      carbonLoadModel.setFactTimeStamp(loadStartTime)
-
-      val executor: ExecutorService = Executors.newFixedThreadPool(1)
-
-      val compactionModel = CompactionModel(compactionSize, compactionType)
-
-      startCompactionThreads(sqlContext,
-        carbonLoadModel,
-        partitioner,
-        hdfsStoreLocation,
-        kettleHomePath,
-        storeLocation,
-        carbonTable,
-        cubeCreationTime,
-        executor,
-        compactionModel
-      )
+      else {
+        logger.error("Not able to acquire the compaction lock.")
+      }
+    }
+    finally {
+      lock.unlock()
+    }
   }
 
   def startCompactionThreads(sqlContext: SQLContext,
@@ -360,30 +374,17 @@ object CarbonDataRDDFactory extends Logging {
           executor.submit(new Runnable() {
             def run() {
 
-              val lock = CarbonLockFactory
-                .getCarbonLockObj(carbonTable.getMetaDataFilepath, LockUsage.COMPACTION_LOCK)
-
-              if (lock.lockWithRetries()) {
-                // For Merging of the Carbon Segments.
-                try {
-                  Compactor.triggerCompaction(hdfsStoreLocation,
-                    carbonLoadModel,
-                    partitioner,
-                    storeLocation,
-                    carbonTable,
-                    kettleHomePath,
-                    cubeCreationTime,
-                    loadsToMerge,
-                    sqlContext
-                  )
-                }
-                finally {
-                  lock.unlock()
-                }
-              }
-              else {
-                logger.error("Not able to acquire the compaction lock.")
-              }
+              // For Merging of the Carbon Segments.
+              Compactor.triggerCompaction(hdfsStoreLocation,
+                carbonLoadModel,
+                partitioner,
+                storeLocation,
+                carbonTable,
+                kettleHomePath,
+                cubeCreationTime,
+                loadsToMerge,
+                sqlContext
+              )
             }
           }
           )
@@ -420,18 +421,31 @@ object CarbonDataRDDFactory extends Logging {
         val executor: ExecutorService = Executors.newFixedThreadPool(1)
 
         val compactionModel = CompactionModel(compactionSize, CompactionType.MINOR_COMPACTION)
+        val lock = CarbonLockFactory
+          .getCarbonLockObj(carbonTable.getMetaDataFilepath, LockUsage.COMPACTION_LOCK)
 
-        startCompactionThreads(sc,
-          carbonLoadModel,
-          partitioner,
-          hdfsStoreLocation,
-          kettleHomePath,
-          storeLocation,
-          carbonTable,
-          cubeCreationTime,
-          executor,
-          compactionModel
-        )
+
+        try {
+          if (lock.lockWithRetries()) {
+            startCompactionThreads(sc,
+              carbonLoadModel,
+              partitioner,
+              hdfsStoreLocation,
+              kettleHomePath,
+              storeLocation,
+              carbonTable,
+              cubeCreationTime,
+              executor,
+              compactionModel
+            )
+          }
+          else {
+            logger.error("Not able to acquire the compaction lock.")
+          }
+        }
+        finally {
+          lock.unlock()
+        }
       }
     }
 
