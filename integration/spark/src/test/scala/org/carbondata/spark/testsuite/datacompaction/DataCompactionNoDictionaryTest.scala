@@ -65,7 +65,7 @@ class DataCompactionNoDictionaryTest extends QueryTest with BeforeAndAfterAll {
       val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
           AbsoluteTableIdentifier(
             CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-            new CarbonTableIdentifier("default", "noDictionaryCompaction")
+            new CarbonTableIdentifier("default", "noDictionaryCompaction", "1")
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList

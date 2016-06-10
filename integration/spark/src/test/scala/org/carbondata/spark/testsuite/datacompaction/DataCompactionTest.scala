@@ -69,7 +69,7 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
       val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
           AbsoluteTableIdentifier(
             CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-            new CarbonTableIdentifier("default", "normalcompaction")
+            new CarbonTableIdentifier("default", "normalcompaction", "1")
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList

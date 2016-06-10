@@ -738,7 +738,7 @@ public final class CarbonProperties {
       numberOfSegmentsToBePreserved = Integer.parseInt(
           getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS_NUMBER,
               CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS_NUMBER));
-      // checking min and max . 0  , 20 is min max.
+      // checking min and max . 0  , 100 is min & max.
       if (numberOfSegmentsToBePreserved < 0 || numberOfSegmentsToBePreserved > 100) {
         numberOfSegmentsToBePreserved = Integer
             .parseInt(CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS_NUMBER);
