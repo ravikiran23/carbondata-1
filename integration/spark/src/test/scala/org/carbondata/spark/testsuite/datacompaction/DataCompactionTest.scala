@@ -61,6 +61,30 @@ class DataCompactionTest extends QueryTest with BeforeAndAfterAll {
 
   }
 
+  test("check if compaction is completed or not.") {
+    var status = true
+    var noOfRetries = 0
+    while (status && noOfRetries < 10) {
+
+      val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
+          AbsoluteTableIdentifier(
+            CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
+            new CarbonTableIdentifier("default", "normalcompaction")
+          )
+      )
+      val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
+
+      if (!segments.contains("0.1")) {
+        // wait for 2 seconds for compaction to complete.
+        Thread.sleep(2000)
+        noOfRetries += 1
+      }
+      else {
+        status = false
+      }
+    }
+  }
+
 
   test("select country from normalcompaction") {
     // check answers after compaction.
