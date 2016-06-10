@@ -57,10 +57,6 @@ public final class CarbonDataMergerUtil {
   private static final LogService LOGGER =
       LogServiceFactory.getLogService(CarbonDataMergerUtil.class.getName());
 
-  private static String isPreserveSegmentEnabled = CarbonProperties.getInstance()
-      .getProperty(CarbonCommonConstants.PRESERVE_LATEST_SEGMENTS,
-          CarbonCommonConstants.DEFAULT_PRESERVE_LATEST_SEGMENTS);
-
   private CarbonDataMergerUtil() {
 
   }
@@ -246,24 +242,24 @@ public final class CarbonDataMergerUtil {
     List<LoadMetadataDetails> loadsOfSameDate =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
-    // check whether the property is enabled or not
-    String isDateConsideredForMerging = CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.ENABLE_COMPACTION_BASED_ON_DATE,
-            CarbonCommonConstants.DEFAULT_ENABLE_COMPACTION_BASED_ON_DATE);
-
-    // if true then process loads according to the load date.
-    if (isDateConsideredForMerging.equalsIgnoreCase(("true"))) {
-      // filter loads based on the loaded date
-      long numberOfDaysAllowedToMerge = 0;
-      try {
-        numberOfDaysAllowedToMerge = Long.parseLong(CarbonProperties.getInstance()
-            .getProperty(CarbonCommonConstants.DAYS_ALLOWED_TO_COMPACT,
-                CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT));
-      } catch (NumberFormatException e) {
+    long numberOfDaysAllowedToMerge = 0;
+    try {
+      numberOfDaysAllowedToMerge = Long.parseLong(CarbonProperties.getInstance()
+          .getProperty(CarbonCommonConstants.DAYS_ALLOWED_TO_COMPACT,
+              CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT));
+      if (numberOfDaysAllowedToMerge < 0 || numberOfDaysAllowedToMerge > 20) {
         numberOfDaysAllowedToMerge =
             Long.parseLong(CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT);
       }
 
+    } catch (NumberFormatException e) {
+      numberOfDaysAllowedToMerge =
+          Long.parseLong(CarbonCommonConstants.DEFAULT_DAYS_ALLOWED_TO_COMPACT);
+    }
+    // if true then process loads according to the load date.
+    if (numberOfDaysAllowedToMerge > 0) {
+
+      // filter loads based on the loaded date
       boolean first = true;
       Date segDate1 = null;
       SimpleDateFormat sdf = new SimpleDateFormat(CarbonCommonConstants.CARBON_TIMESTAMP);
@@ -446,13 +442,10 @@ public final class CarbonDataMergerUtil {
       List<LoadMetadataDetails> segments) {
 
     int numberOfSegmentsToBePreserved = 0;
-    LOGGER.info("preserve segments property is " + isPreserveSegmentEnabled);
     // check whether the preserving of the segments from merging is enabled or not.
-    if (isPreserveSegmentEnabled.equalsIgnoreCase("true")) {
-      // get the number of loads to be preserved.
-      numberOfSegmentsToBePreserved =
-          CarbonProperties.getInstance().getNumberOfSegmentsToBePreserved();
-    }
+    // get the number of loads to be preserved.
+    numberOfSegmentsToBePreserved =
+        CarbonProperties.getInstance().getNumberOfSegmentsToBePreserved();
     // get the number of valid segments and retain the latest loads from merging.
     return CarbonDataMergerUtil
         .getValidLoadDetailsWithRetaining(segments, numberOfSegmentsToBePreserved);

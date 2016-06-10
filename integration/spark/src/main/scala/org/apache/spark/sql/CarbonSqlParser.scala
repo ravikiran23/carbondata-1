@@ -510,9 +510,14 @@ class CarbonSqlParser()
           case _ => // Unsupport features
         }
 
-        val altertablemodel = AlterTableModel(dbName, tableName, compactionType)
+        if (compactionType.equalsIgnoreCase("minor") || compactionType.equalsIgnoreCase("major")) {
+          val altertablemodel = AlterTableModel(dbName, tableName, compactionType)
+          AlterTableCompaction(altertablemodel)
+        }
+        else {
+          sys.error("Invalid compaction type, supported values are 'major' and 'minor'")
+        }
 
-        AlterTableCompaction(altertablemodel)
     }
   }
 
