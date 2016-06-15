@@ -50,7 +50,6 @@ object Compactor {
     loadsToMerge: java.util.List[LoadMetadataDetails],
     sc: SQLContext): Unit = {
 
-    logger.info("loads about to merge are  " + loadsToMerge)
     val startTime = System.nanoTime();
     val mergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
     var finalMergeStatus = true
@@ -105,6 +104,7 @@ object Compactor {
         .updateLoadMetadataWithMergeStatus(loadsToMerge, carbonTable.getMetaDataFilepath(),
           mergedLoadName, carbonLoadModel, mergeLoadStartTime
         )
+      logger.audit("Compaction request completed.")
     }
   }
 }

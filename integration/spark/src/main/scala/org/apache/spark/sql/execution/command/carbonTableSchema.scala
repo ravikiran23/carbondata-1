@@ -139,7 +139,10 @@ case class CarbonMergerMapping(storeLocation: String, hdfsStoreLocation: String,
 
 case class AlterTableModel(dbName: Option[String], tableName: String, compactionType: String)
 
-case class CompactionModel(compactionSize: Long, compactionType: CompactionType)
+case class CompactionModel(compactionSize: Long,
+  compactionType: CompactionType,
+  carbonTable: CarbonTable,
+  cubeCreationTime: Long)
 
 object TableNewProcessor {
   def apply(cm: tableModel, sqlContext: SQLContext): TableInfo = {
