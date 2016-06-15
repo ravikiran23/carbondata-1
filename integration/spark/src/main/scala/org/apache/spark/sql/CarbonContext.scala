@@ -28,6 +28,8 @@ import org.apache.spark.sql.hive._
 import org.apache.spark.sql.optimizer.CarbonOptimizer
 
 import org.carbondata.common.logging.LogServiceFactory
+import org.carbondata.core.constants.CarbonCommonConstants
+import org.carbondata.core.locks.ZookeeperInit
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.spark.rdd.CarbonDataFrameRDD
 
@@ -42,6 +44,17 @@ class CarbonContext(val sc: SparkContext, val storePath: String) extends HiveCon
   @transient
   override lazy val catalog = {
     CarbonProperties.getInstance().addProperty("carbon.storelocation", storePath)
+
+    // creating zookeeper instance once.
+    // if zookeeper is configured as carbon lock type.
+    if (CarbonProperties.getInstance()
+      .getProperty(CarbonCommonConstants.LOCK_TYPE, CarbonCommonConstants.LOCK_TYPE_DEFAULT)
+      .equalsIgnoreCase(CarbonCommonConstants.CARBON_LOCK_TYPE_ZOOKEEPER)) {
+      val zookeeperUrl = this.getConf("spark.deploy.zookeeper.url", "")
+      ZookeeperInit.getInstance(zookeeperUrl)
+
+    }
+
     new CarbonMetastoreCatalog(this, storePath, metadataHive) with OverrideCatalog
   }
 
