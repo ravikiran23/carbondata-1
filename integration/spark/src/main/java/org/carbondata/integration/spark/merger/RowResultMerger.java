@@ -127,9 +127,8 @@ public class RowResultMerger {
   /**
    * Merge function
    *
-   * @throws SliceMergerException
    */
-  public boolean mergerSlice() throws SliceMergerException {
+  public boolean mergerSlice() {
     boolean mergeStatus = false;
     int index = 0;
     try {
@@ -175,17 +174,20 @@ public class RowResultMerger {
         }
       }
       this.dataHandler.finish();
-
-    } catch (CarbonDataWriterException e) {
-      return mergeStatus;
+      mergeStatus = true;
+    } catch (Exception e) {
+      LOGGER.error("Exception in compaction merger " + e.getMessage());
+      mergeStatus = false;
     } finally {
       try {
         this.dataHandler.closeHandler();
       } catch (CarbonDataWriterException e) {
-        return false;
+        LOGGER.error("Exception while closing the handler in compaction merger " + e.getMessage());
+        mergeStatus = false;
       }
     }
-    return true;
+
+    return mergeStatus;
   }
 
   /**
