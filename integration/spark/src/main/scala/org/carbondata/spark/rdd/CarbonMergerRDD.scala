@@ -143,17 +143,9 @@ class CarbonMergerRDD[K, V](
       )
       val mergeStatus = merger.mergerSlice()
 
-      var havePair = false
       var finished = false
 
       override def hasNext: Boolean = {
-        if (!finished && !havePair) {
-          finished = true
-          havePair = !finished
-        }
-        if(finished) {
-          exec.clearDictionaryFromQueryModel
-        }
         !finished
       }
 
@@ -161,7 +153,7 @@ class CarbonMergerRDD[K, V](
         if (!hasNext) {
           throw new java.util.NoSuchElementException("End of stream")
         }
-        havePair = false
+        finished = true
         result.getKey(0, mergeStatus)
       }
 
