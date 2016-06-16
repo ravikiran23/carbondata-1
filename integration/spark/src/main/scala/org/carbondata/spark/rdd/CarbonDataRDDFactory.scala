@@ -19,20 +19,18 @@
 package org.carbondata.spark.rdd
 
 import java.util
-import java.util.concurrent.{Executors, ExecutorService, Future}
+import java.util.concurrent.{ExecutorService, Executors, Future}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.util.control.Breaks._
-
 import org.apache.hadoop.conf.{Configurable, Configuration}
 import org.apache.hadoop.mapreduce.Job
 import org.apache.hadoop.mapreduce.lib.input.FileSplit
-import org.apache.spark.{Logging, Partition, SparkContext}
+import org.apache.spark.{Logging, Partition, SparkContext, SparkEnv}
 import org.apache.spark.sql.{CarbonEnv, CarbonRelation, SQLContext}
 import org.apache.spark.sql.execution.command.{AlterTableModel, CompactionModel, Partitioner}
 import org.apache.spark.util.{FileUtils, SplitUtils}
-
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.CarbonDataLoadSchema
 import org.carbondata.core.carbon.datastore.block.TableBlockInfo
@@ -51,6 +49,8 @@ import org.carbondata.spark.load._
 import org.carbondata.spark.merger.CarbonDataMergerUtil
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.{CarbonQueryUtil, LoadMetadataUtil}
+
+import scala.util.Random
 
 /**
  * This is the factory class which can create different RDD depends on user needs.
@@ -465,6 +465,15 @@ object CarbonDataRDDFactory extends Logging {
         val lock = CarbonLockFactory
           .getCarbonLockObj(carbonTable.getMetaDataFilepath, LockUsage.COMPACTION_LOCK)
 
+        var storeLocation = ""
+        var configuredStore = CarbonLoaderUtil.getConfiguredLocalDirs(SparkEnv.get.conf)
+        if(null != configuredStore && configuredStore.length > 0){
+          storeLocation = configuredStore(Random.nextInt(configuredStore.length))
+        }
+        if(storeLocation == null){
+          storeLocation = System.getProperty("java.io.tmpdir")
+        }
+        storeLocation = storeLocation + "/carbonstore/" + System.nanoTime()
 
         if (lock.lockWithRetries()) {
 

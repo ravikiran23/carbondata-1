@@ -146,13 +146,16 @@ class CarbonMergerRDD[K, V](
       var finished = false
 
       override def hasNext: Boolean = {
-        !finished
+        if (!finished) {
+          finished = true
+          finished
+        }
+        else {
+          !finished
+        }
       }
 
       override def next(): (K, V) = {
-        if (!hasNext) {
-          throw new java.util.NoSuchElementException("End of stream")
-        }
         finished = true
         result.getKey(0, mergeStatus)
       }
