@@ -135,31 +135,4 @@ public class CarbonCompactionUtil {
 
   }
 
-  /**
-   * For forming the temp store location
-   * @param schemaName
-   * @param cubeName
-   * @param partitionID
-   * @param segmentId
-   * @param taskNo
-   * @return
-   */
-  public static String getTempLocation(String schemaName, String cubeName, String partitionID,
-      String segmentId, String taskNo){
-    String storeLocation;
-    String tempLocationKey = schemaName + '_' + cubeName;
-    String baseStorePath = CarbonProperties.getInstance()
-        .getProperty(tempLocationKey, CarbonCommonConstants.STORE_LOCATION_DEFAULT_VAL);
-    CarbonTable carbonTable = CarbonMetadata.getInstance().getCarbonTable(tempLocationKey);
-    CarbonTableIdentifier carbonTableIdentifier = carbonTable.getCarbonTableIdentifier();
-    CarbonTablePath carbonTablePath =
-        CarbonStorePath.getCarbonTablePath(baseStorePath, carbonTableIdentifier);
-    String partitionId = partitionID;
-    String carbonDataDirectoryPath = carbonTablePath.getCarbonDataDirectoryPath(partitionId,
-        segmentId);
-    carbonDataDirectoryPath = carbonDataDirectoryPath + File.separator + taskNo;
-    storeLocation = carbonDataDirectoryPath + CarbonCommonConstants.FILE_INPROGRESS_STATUS;
-    return storeLocation;
-  }
-
 }

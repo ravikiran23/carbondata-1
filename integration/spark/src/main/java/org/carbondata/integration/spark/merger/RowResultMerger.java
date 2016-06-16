@@ -215,6 +215,7 @@ public class RowResultMerger {
     carbonFactDataHandlerModel.setDatabaseName(schemaName);
     carbonFactDataHandlerModel.setTableName(tableName);
     carbonFactDataHandlerModel.setMeasureCount(segprop.getMeasures().size());
+    carbonFactDataHandlerModel.setCompactionFlow(true);
     carbonFactDataHandlerModel
         .setMdKeyLength(segprop.getDimensionKeyGenerator().getKeySizeInBytes());
     carbonFactDataHandlerModel.setStoreLocation(tempStoreLocation);

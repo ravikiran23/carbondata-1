@@ -327,7 +327,7 @@ object CarbonDataRDDFactory extends Logging {
       .getCarbonLockObj(carbonTable.getMetaDataFilepath, LockUsage.COMPACTION_LOCK)
 
     if (lock.lockWithRetries()) {
-
+      logger.error("Acquired the compaction lock.")
       startCompactionThreads(sqlContext,
         carbonLoadModel,
         partitioner,
@@ -367,7 +367,7 @@ object CarbonDataRDDFactory extends Logging {
 
     if (loadsToMerge.size() > 1) {
 
-      new Runnable {
+      new Thread {
         override def run(): Unit = {
 
           val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
@@ -388,7 +388,8 @@ object CarbonDataRDDFactory extends Logging {
               if (loadsToMerge.size() > 1) {
                 loadsToMerge.asScala.foreach(seg => {
                   logger.info("load identified for merge is " + seg.getLoadName)
-                })
+                }
+                )
 
                 val future: Future[Void] = executor.submit(new CompactionCallable(hdfsStoreLocation,
                   carbonLoadModel,
@@ -399,7 +400,8 @@ object CarbonDataRDDFactory extends Logging {
                   compactionModel.cubeCreationTime,
                   loadsToMerge,
                   sqlContext
-                ))
+                )
+                )
                 futureList.add(future)
                 segList = CarbonDataMergerUtil
                   .filterOutAlreadyMergedSegments(segList, loadsToMerge)
@@ -409,23 +411,24 @@ object CarbonDataRDDFactory extends Logging {
                 break
               }
             }
-            try {
-              futureList.asScala.foreach(future => {
-                try {
-                  future.get
-                }
-                catch {
-                  case e: Exception =>
-                    logger.error("Exception in compaction thread " + e.getMessage)
-                }
-              })
+          }
+          try {
+            futureList.asScala.foreach(future => {
+              try {
+                future.get
+              }
+              catch {
+                case e: Exception =>
+                  logger.error("Exception in compaction thread " + e.getMessage)
+              }
             }
-            finally {
-              compactionLock.unlock
-            }
+            )
+          }
+          finally {
+            compactionLock.unlock
           }
         }
-      }.run
+      }.start
     }
     else {
       compactionLock.unlock()

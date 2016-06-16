@@ -129,6 +129,8 @@ public class CarbonFactDataHandlerModel {
 
   private int[] colCardinality;
 
+  private boolean isCompactionFlow;
+
   public int[] getColCardinality() {
     return colCardinality;
   }
@@ -318,6 +320,14 @@ public class CarbonFactDataHandlerModel {
 
   public void setCarbonDataDirectoryPath(String carbonDataDirectoryPath) {
     this.carbonDataDirectoryPath = carbonDataDirectoryPath;
+  }
+
+  public boolean isCompactionFlow() {
+    return isCompactionFlow;
+  }
+
+  public void setCompactionFlow(boolean compactionFlow) {
+    isCompactionFlow = compactionFlow;
   }
 }
 

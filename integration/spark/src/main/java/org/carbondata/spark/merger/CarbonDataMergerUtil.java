@@ -474,9 +474,6 @@ public final class CarbonDataMergerUtil {
           .equalsIgnoreCase(CarbonCommonConstants.STORE_LOADSTATUS_PARTIAL_SUCCESS) || segment
           .getLoadStatus().equalsIgnoreCase(CarbonCommonConstants.MARKED_FOR_UPDATE)) {
         validList.add(segment);
-      } else {
-        // in case if deleted segment is found then break loop.
-        break;
       }
     }
 
