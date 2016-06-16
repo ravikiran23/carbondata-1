@@ -27,6 +27,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 import scala.util.parsing.combinator.RegexParsers
+
 import org.apache.spark
 import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
@@ -34,6 +35,7 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.{AggregateTableAttributes, Partitioner}
 import org.apache.spark.sql.hive.client.ClientInterface
 import org.apache.spark.sql.types._
+
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.CarbonTableIdentifier
 import org.carbondata.core.carbon.metadata.CarbonMetadata
