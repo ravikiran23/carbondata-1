@@ -353,7 +353,8 @@ object CarbonDataRDDFactory extends Logging {
     executor: ExecutorService,
     compactionModel: CompactionModel,
     compactionLock: ICarbonLock): Unit = {
-
+    //update the updated table status.
+    readLoadMetadataDetails(carbonLoadModel,hdfsStoreLocation)
     var segList: util.List[LoadMetadataDetails] = carbonLoadModel.getLoadMetadataDetails
 
     val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
