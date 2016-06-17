@@ -80,12 +80,12 @@ public class ZooKeeperLocking extends AbstractCarbonLock {
     String cubeName = location.substring(location.lastIndexOf('/') + 1, location.length());
 
     this.tableIdFolder = zooKeeperLocation + CarbonCommonConstants.FILE_SEPARATOR + schemaName
-        + CarbonCommonConstants.UNDERSCORE + cubeName;
+        + '.' + cubeName;
 
-        zk = ZookeeperInit.getInstance().getZookeeper();
+    zk = ZookeeperInit.getInstance().getZookeeper();
 
     this.lockTypeFolder = zooKeeperLocation + CarbonCommonConstants.FILE_SEPARATOR + schemaName
-        + CarbonCommonConstants.UNDERSCORE + cubeName + CarbonCommonConstants.FILE_SEPARATOR
+        + '.' + cubeName + CarbonCommonConstants.FILE_SEPARATOR
         + lockUsage.toString();
     try {
       createBaseNode();
