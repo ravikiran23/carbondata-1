@@ -499,7 +499,7 @@ public final class CarbonDataMergerUtil {
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
     int noOfUnmergeSegmentsCount =
-        CarbonProperties.getInstance().getCompactionUnmergeSegmentCount();
+        CarbonProperties.getInstance().getCompactionSegmentLevelCount();
 
     int noOfMergedSegmentsCount = CarbonProperties.getInstance().getCompactionMergeSegmentCount();
 

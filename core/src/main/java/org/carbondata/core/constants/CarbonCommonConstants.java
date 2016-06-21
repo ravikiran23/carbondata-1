@@ -1043,7 +1043,8 @@ public final class CarbonCommonConstants {
   /**
    * Number of unmerged segments to be merged.
    */
-  public static final String COMPACTION_UNMERGE_SEG_COUNT = "carbon.compaction.level.threshold";
+  public static final String COMPACTION_SEGMENT_LEVEL_THRESHOLD =
+      "carbon.compaction.level.threshold";
 
   /**
    * Default count for Number of segments to be merged in levels is 4,3
