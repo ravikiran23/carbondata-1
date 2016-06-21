@@ -221,6 +221,7 @@ class CarbonMetastoreCatalog(hive: HiveContext, val storePath: String, client: C
     val zookeeperUrl: String = hive.getConf("spark.deploy.zookeeper.url",null)
     if (zookeeperUrl != null) {
       ZookeeperInit.getInstance(zookeeperUrl)
+      LOGGER.info("Zookeeper url is configured. Taking the zookeeper as lock type.")
       CarbonProperties.getInstance
         .addProperty(CarbonCommonConstants.LOCK_TYPE,
           CarbonCommonConstants.CARBON_LOCK_TYPE_ZOOKEEPER
