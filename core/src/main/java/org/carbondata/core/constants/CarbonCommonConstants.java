@@ -1049,7 +1049,7 @@ public final class CarbonCommonConstants {
   /**
    * Default count for Number of segments to be merged in levels is 4,3
    */
-  public static final String DEFAULT_COMPACTION_UNMERGE_SEG_COUNT = "4,3";
+  public static final String DEFAULT_SEGMENT_LEVEL_THRESHOLD = "4,3";
 
   private CarbonCommonConstants() {
   }

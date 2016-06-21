@@ -766,23 +766,59 @@ public final class CarbonProperties {
     String commaSeparatedLevels;
 
     commaSeparatedLevels = getProperty(CarbonCommonConstants.COMPACTION_SEGMENT_LEVEL_THRESHOLD,
-        CarbonCommonConstants.DEFAULT_COMPACTION_UNMERGE_SEG_COUNT);
+        CarbonCommonConstants.DEFAULT_SEGMENT_LEVEL_THRESHOLD);
+    int[] compactionSize = getIntArray(commaSeparatedLevels);
+
+    if(null == compactionSize){
+      compactionSize = getIntArray(CarbonCommonConstants.DEFAULT_SEGMENT_LEVEL_THRESHOLD);
+    }
+
+    return compactionSize;
+  }
+
+  /**
+   *
+   * @param commaSeparatedLevels
+   * @return
+   */
+  private int[] getIntArray(String commaSeparatedLevels) {
     String[] levels = commaSeparatedLevels.split(",");
     int[] compactionSize = new int[levels.length];
-
+    int i = 0;
     for (String levelSize : levels) {
       try {
-        Integer.parseInt(levelSize);
+        int size = Integer.parseInt(levelSize);
+        if(validate(size,100,0,-1) < 0 ){
+          // if given size is out of boundary then take default value for all levels.
+          return null;
+        }
+        compactionSize[i++] = size;
       }
       catch(NumberFormatException e){
         LOGGER.error(
             "Given value for property" + CarbonCommonConstants.COMPACTION_SEGMENT_LEVEL_THRESHOLD
-                + " is not proper. Taking the default value.");
+                + " is not proper. Taking the default value "
+                + CarbonCommonConstants.DEFAULT_SEGMENT_LEVEL_THRESHOLD);
+        return null;
       }
-
     }
-
     return compactionSize;
+  }
+
+  /**
+   * Validate the restrictions
+   *
+   * @param actual
+   * @param max
+   * @param min
+   * @param defaultVal
+   * @return
+   */
+  public int validate(int actual, int max, int min, int defaultVal) {
+    if (actual <= max && actual >= min) {
+      return actual;
+    }
+    return defaultVal;
   }
 
 }

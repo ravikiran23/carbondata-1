@@ -498,10 +498,11 @@ public final class CarbonDataMergerUtil {
     List<LoadMetadataDetails> unMergedSegments =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
 
-    int noOfUnmergeSegmentsCount =
+    int[] noOfSegmentLevelsCount =
         CarbonProperties.getInstance().getCompactionSegmentLevelCount();
 
-    int noOfMergedSegmentsCount = CarbonProperties.getInstance().getCompactionMergeSegmentCount();
+    int level1Size = noOfSegmentLevelsCount[0];
+    int level2Size = noOfSegmentLevelsCount[1];
 
     int unMergeCounter = 0;
     int mergeCounter = 0;
@@ -524,13 +525,13 @@ public final class CarbonDataMergerUtil {
         //if it is an unmerged segment then increment counter
         unMergeCounter++;
         unMergedSegments.add(segment);
-        if (unMergeCounter == (noOfUnmergeSegmentsCount)) {
+        if (unMergeCounter == (level1Size)) {
           return unMergedSegments;
         }
       } else {
         mergeCounter++;
         mergedSegments.add(segment);
-        if (mergeCounter == (noOfMergedSegmentsCount)) {
+        if (mergeCounter == (level2Size)) {
           return mergedSegments;
         }
       }
