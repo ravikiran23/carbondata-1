@@ -33,7 +33,7 @@ public class CarbonLockFactory {
   private static String lockTypeConfigured;
 
   static {
-    CarbonLockFactory.updateZooKeeperLockingStatus();
+    CarbonLockFactory.getLockTypeConfigured();
   }
 
   /**
@@ -63,10 +63,9 @@ public class CarbonLockFactory {
   /**
    * This method will set the zookeeper status whether zookeeper to be used for locking or not.
    */
-  private static void updateZooKeeperLockingStatus() {
+  private static void getLockTypeConfigured() {
     lockTypeConfigured = CarbonProperties.getInstance()
         .getProperty(CarbonCommonConstants.LOCK_TYPE, CarbonCommonConstants.LOCK_TYPE_DEFAULT);
-
   }
 
 }
