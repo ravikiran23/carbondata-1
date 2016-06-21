@@ -320,8 +320,6 @@ object CarbonDataRDDFactory extends Logging {
     val loadStartTime = CarbonLoaderUtil.readCurrentTime()
     carbonLoadModel.setFactTimeStamp(loadStartTime)
 
-    val executor: ExecutorService = Executors.newFixedThreadPool(1)
-
     val compactionModel = CompactionModel(compactionSize,
       compactionType,
       carbonTable,
@@ -342,7 +340,6 @@ object CarbonDataRDDFactory extends Logging {
         hdfsStoreLocation,
         kettleHomePath,
         storeLocation,
-        executor,
         compactionModel,
         lock
       )
@@ -366,9 +363,9 @@ object CarbonDataRDDFactory extends Logging {
     hdfsStoreLocation: String,
     kettleHomePath: String,
     storeLocation: String,
-    executor: ExecutorService,
     compactionModel: CompactionModel,
     compactionLock: ICarbonLock): Unit = {
+    val executor: ExecutorService = Executors.newFixedThreadPool(1)
     // update the updated table status.
     readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
     var segList: util.List[LoadMetadataDetails] = carbonLoadModel.getLoadMetadataDetails
@@ -442,7 +439,15 @@ object CarbonDataRDDFactory extends Logging {
             )
           }
           finally {
-            compactionLock.unlock
+            startCompactionThreads(sqlContext,
+              carbonLoadModel,
+              partitioner,
+              hdfsStoreLocation,
+              kettleHomePath,
+              storeLocation,
+              compactionModel,
+              compactionLock
+            )
           }
         }
       }.start
@@ -475,8 +480,6 @@ object CarbonDataRDDFactory extends Logging {
           )
         val compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MINOR_COMPACTION)
 
-        val executor: ExecutorService = Executors.newFixedThreadPool(1)
-
         val compactionModel = CompactionModel(compactionSize,
           CompactionType.MINOR_COMPACTION,
           carbonTable,
@@ -503,7 +506,6 @@ object CarbonDataRDDFactory extends Logging {
             hdfsStoreLocation,
             kettleHomePath,
             storeLocation,
-            executor,
             compactionModel,
             lock
           )

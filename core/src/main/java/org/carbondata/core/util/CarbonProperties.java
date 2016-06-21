@@ -758,4 +758,42 @@ public final class CarbonProperties {
     LOGGER.info(carbonProperties.toString());
   }
 
+  /**
+   * gettting the unmerged segment numbers to be merged.
+   * @return
+   */
+  public int getCompactionUnmergeSegmentCount() {
+    int compactionSize;
+    try {
+      compactionSize = Integer.parseInt(
+          getProperty(CarbonCommonConstants.COMPACTION_UNMERGE_SEG_COUNT,
+              CarbonCommonConstants.DEFAULT_COMPACTION_UNMERGE_SEG_COUNT));
+    } catch (NumberFormatException e) {
+      LOGGER.error("specified number is not correct for property "
+          + CarbonCommonConstants.COMPACTION_UNMERGE_SEG_COUNT + ". Taking the default value "
+          + CarbonCommonConstants.DEFAULT_COMPACTION_UNMERGE_SEG_COUNT);
+      compactionSize = Integer.parseInt(CarbonCommonConstants.DEFAULT_COMPACTION_UNMERGE_SEG_COUNT);
+    }
+    return compactionSize;
+  }
+
+  /**
+   *
+   * @return
+   */
+  public int getCompactionMergeSegmentCount() {
+    int compactionSize;
+    try {
+      compactionSize = Integer.parseInt(
+          getProperty(CarbonCommonConstants.COMPACTION_MERGE_SEG_COUNT,
+              CarbonCommonConstants.DEFAULT_COMPACTION_MERGE_SEG_COUNT));
+    } catch (NumberFormatException e) {
+      LOGGER.error("specified number is not correct for property "
+          + CarbonCommonConstants.COMPACTION_MERGE_SEG_COUNT + ". Taking the default value "
+          + CarbonCommonConstants.DEFAULT_COMPACTION_MERGE_SEG_COUNT);
+      compactionSize = Integer.parseInt(CarbonCommonConstants.DEFAULT_COMPACTION_MERGE_SEG_COUNT);
+    }
+    return compactionSize;
+  }
+
 }

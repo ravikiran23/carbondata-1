@@ -1040,6 +1040,16 @@ public final class CarbonCommonConstants {
   public static final String FILTER_INVALID_MEMBER = " Invalid Record(s) are present "
                                                      + "while filter evaluation. ";
 
+  /**
+   * Number of unmerged segments to be merged.
+   */
+  public static final String COMPACTION_UNMERGE_SEG_COUNT = "carbon.compaction.level.threshold";
+
+  /**
+   * Default count for Number of segments to be merged in levels is 4,3
+   */
+  public static final String DEFAULT_COMPACTION_UNMERGE_SEG_COUNT = "4,3";
+
   private CarbonCommonConstants() {
   }
 }

@@ -234,25 +234,45 @@ public final class CarbonDataMergerUtil {
       CarbonLoadModel carbonLoadModel, int partitionCount, long compactionSize,
       List<LoadMetadataDetails> segments, CompactionType compactionType) {
 
+    List sortedSegments = new ArrayList(segments);
+    // sort the segment details.
+    Collections.sort(sortedSegments, new Comparator<LoadMetadataDetails>() {
+      @Override public int compare(LoadMetadataDetails seg1, LoadMetadataDetails seg2) {
+        double seg1Id = Double.parseDouble(seg1.getLoadName());
+        double seg2Id = Double.parseDouble(seg2.getLoadName());
+        if (seg1Id - seg2Id < 0) {
+          return -1;
+        }
+        if (seg1Id - seg2Id > 0) {
+          return 1;
+        }
+        return 0;
+      }
+    });
+
     // check preserve property and preserve the configured number of latest loads.
 
     List<LoadMetadataDetails> listOfSegmentsAfterPreserve =
-        checkPreserveSegmentsPropertyReturnRemaining(segments);
+        checkPreserveSegmentsPropertyReturnRemaining(sortedSegments);
 
     // filter the segments if the compaction based on days is configured.
 
     List<LoadMetadataDetails> listOfSegmentsLoadedInSameDateInterval =
         identifySegmentsToBeMergedBasedOnLoadedDate(listOfSegmentsAfterPreserve);
-
+    List<LoadMetadataDetails> listOfSegmentsToBeMerged;
     // identify the segments to merge based on the Size of the segments across partition.
+    if (compactionType.equals(CompactionType.MAJOR_COMPACTION)) {
 
-    List<LoadMetadataDetails> listOfSegmentsBelowThresholdSize =
-        identifySegmentsToBeMergedBasedOnSize(compactionSize,
-            listOfSegmentsLoadedInSameDateInterval, carbonLoadModel, partitionCount, storeLocation,
-            compactionType);
+      listOfSegmentsToBeMerged = identifySegmentsToBeMergedBasedOnSize(compactionSize,
+          listOfSegmentsLoadedInSameDateInterval, carbonLoadModel, partitionCount, storeLocation,
+          compactionType);
+    } else {
 
+      listOfSegmentsToBeMerged =
+          identifySegmentsToBeMergedBasedOnSegCount(listOfSegmentsLoadedInSameDateInterval);
+    }
 
-    return listOfSegmentsBelowThresholdSize;
+    return listOfSegmentsToBeMerged;
   }
 
   /**
@@ -462,6 +482,72 @@ public final class CarbonDataMergerUtil {
     }
 
     return segmentsToBeMerged;
+  }
+
+  /**
+   * Identify the segments to be merged based on the segment count
+   *
+   * @param listOfSegmentsAfterPreserve
+   * @return
+   */
+  private static List<LoadMetadataDetails> identifySegmentsToBeMergedBasedOnSegCount(
+      List<LoadMetadataDetails> listOfSegmentsAfterPreserve) {
+
+    List<LoadMetadataDetails> mergedSegments =
+        new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+    List<LoadMetadataDetails> unMergedSegments =
+        new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
+
+    int noOfUnmergeSegmentsCount =
+        CarbonProperties.getInstance().getCompactionUnmergeSegmentCount();
+
+    int noOfMergedSegmentsCount = CarbonProperties.getInstance().getCompactionMergeSegmentCount();
+
+    int unMergeCounter = 0;
+    int mergeCounter = 0;
+    boolean isMergeConditionMet = false;
+
+    // check size of each segment , sum it up across partitions
+    for (LoadMetadataDetails segment : listOfSegmentsAfterPreserve) {
+
+      String segName = segment.getLoadName();
+
+      // if a segment is already merged 2 levels then it s name will become .2
+      // need to exclude those segments from minor compaction.
+      if (segName.endsWith(".2")) {
+        continue;
+      }
+
+      // check if the segment is merged or not
+
+      if (!isMergedSegment(segName)) {
+        //if it is an unmerged segment then increment counter
+        unMergeCounter++;
+        unMergedSegments.add(segment);
+        if (unMergeCounter == (noOfUnmergeSegmentsCount)) {
+          return unMergedSegments;
+        }
+      } else {
+        mergeCounter++;
+        mergedSegments.add(segment);
+        if (mergeCounter == (noOfMergedSegmentsCount)) {
+          return mergedSegments;
+        }
+      }
+    }
+    return new ArrayList<>(0);
+  }
+
+  /**
+   * To check if the segment is merged or not.
+   * @param segName
+   * @return
+   */
+  private static boolean isMergedSegment(String segName) {
+    if(segName.contains(".")){
+      return true;
+    }
+    return false;
   }
 
   /**
