@@ -264,8 +264,7 @@ public final class CarbonDataMergerUtil {
     if (compactionType.equals(CompactionType.MAJOR_COMPACTION)) {
 
       listOfSegmentsToBeMerged = identifySegmentsToBeMergedBasedOnSize(compactionSize,
-          listOfSegmentsLoadedInSameDateInterval, carbonLoadModel, partitionCount, storeLocation,
-          compactionType);
+          listOfSegmentsLoadedInSameDateInterval, carbonLoadModel, partitionCount, storeLocation);
     } else {
 
       listOfSegmentsToBeMerged =
@@ -393,7 +392,7 @@ public final class CarbonDataMergerUtil {
   }
 
   /**
-   * Identify the segments to be merged based on the Size.
+   * Identify the segments to be merged based on the Size in case of Major compaction.
    *
    * @param compactionSize
    * @param listOfSegmentsAfterPreserve
@@ -404,8 +403,7 @@ public final class CarbonDataMergerUtil {
    */
   private static List<LoadMetadataDetails> identifySegmentsToBeMergedBasedOnSize(
       long compactionSize, List<LoadMetadataDetails> listOfSegmentsAfterPreserve,
-      CarbonLoadModel carbonLoadModel, int partitionCount, String storeLocation,
-      CompactionType compactionType) {
+      CarbonLoadModel carbonLoadModel, int partitionCount, String storeLocation) {
 
     List<LoadMetadataDetails> segmentsToBeMerged =
         new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
@@ -419,52 +417,41 @@ public final class CarbonDataMergerUtil {
     // total length
     long totalLength = 0;
 
-    String includeCompactedSegments = CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.INCLUDE_ALREADY_COMPACTED_SEGMENTS,
-            CarbonCommonConstants.INCLUDE_ALREADY_COMPACTED_SEGMENTS_DEFAULT);
-
     // check size of each segment , sum it up across partitions
     for (LoadMetadataDetails segment : listOfSegmentsAfterPreserve) {
 
       String segId = segment.getLoadName();
 
-      // in case of minor compaction . check the property whether to include the
-      // compacted segment or not.
-      // check if the segment is compacted or not.
-      if (CompactionType.MINOR_COMPACTION.equals(compactionType) && includeCompactedSegments
-          .equalsIgnoreCase("false") && segId.contains(".")) {
-        continue;
+      sizeOfOneSegmentAcrossPartition =
+          getSizeOfOneSegmentAcrossPartition(partitionCount, storeLocation, tableIdentifier,
+              sizeOfOneSegmentAcrossPartition, segId);
+
+      // if size of a segment is greater than the Major compaction size. then ignore it.
+      if (sizeOfOneSegmentAcrossPartition > (compactionSize * 1024 * 1024)) {
+        // if already 2 segments have been found for merging then stop scan here and merge.
+        if (segmentsToBeMerged.size() > 1) {
+          break;
+        } else { // if only one segment is found then remove the earlier one in list.
+          // reset the total length to 0.
+          segmentsToBeMerged.removeAll(segmentsToBeMerged);
+          totalLength = 0;
+          continue;
+        }
       }
 
-      // calculate size across partitions
-      for (int partition = 0; partition < partitionCount; partition++) {
-
-        String loadPath = CarbonLoaderUtil
-            .getStoreLocation(storeLocation, tableIdentifier, segId, partition + "");
-
-        CarbonFile segmentFolder =
-            FileFactory.getCarbonFile(loadPath, FileFactory.getFileType(loadPath));
-
-        long sizeOfEachSegment = getSizeOfFactFileInLoad(segmentFolder);
-
-        sizeOfOneSegmentAcrossPartition += sizeOfEachSegment;
-      }
       totalLength += sizeOfOneSegmentAcrossPartition;
-      // in case of minor compaction the size of the segments should exceed the
-      // minor compaction limit then only compaction will occur.
+
       // in case of major compaction the size doesnt matter. all the segments will be merged.
       if (totalLength < (compactionSize * 1024 * 1024)) {
         segmentsToBeMerged.add(segment);
-      }
-      // in case if minor we will merge segments only when it exceeds limit
-      // so check whether limit has been exceeded. if yes then break loop.
-      if (CompactionType.MINOR_COMPACTION.equals(compactionType)) {
-        if (totalLength > (compactionSize * 1024 * 1024)) {
-          // if size of segments exceeds then take those segments and merge.
-          // i.e if 1st segment is 200mb and 2nd segment is 100mb.
-          //  and compaction size is 256mb . we need to merge these 2 loads. so added this check.
-          segmentsToBeMerged.add(segment);
+      } else { // if already 2 segments have been found for merging then stop scan here and merge.
+        if (segmentsToBeMerged.size() > 1) {
           break;
+        } else { // if only one segment is found then remove the earlier one in list and put this.
+          // reset the total length to the current identified segment.
+          segmentsToBeMerged.removeAll(segmentsToBeMerged);
+          segmentsToBeMerged.add(segment);
+          totalLength = sizeOfOneSegmentAcrossPartition;
         }
       }
 
@@ -472,16 +459,34 @@ public final class CarbonDataMergerUtil {
       sizeOfOneSegmentAcrossPartition = 0;
     }
 
-    // if type is minor then we need to check the total size whether it has reached the limit of
-    // compaction size.
-    if (CompactionType.MINOR_COMPACTION.equals(compactionType)) {
-      if (totalLength < compactionSize * 1024 * 1024) {
-        // no need to do the compaction.
-        segmentsToBeMerged.removeAll(segmentsToBeMerged);
-      }
-    }
-
     return segmentsToBeMerged;
+  }
+
+  /**
+   * For calculating the size of a segment across all partition.
+   * @param partitionCount
+   * @param storeLocation
+   * @param tableIdentifier
+   * @param sizeOfOneSegmentAcrossPartition
+   * @param segId
+   * @return
+   */
+  private static long getSizeOfOneSegmentAcrossPartition(int partitionCount, String storeLocation,
+      CarbonTableIdentifier tableIdentifier, long sizeOfOneSegmentAcrossPartition, String segId) {
+    // calculate size across partitions
+    for (int partition = 0; partition < partitionCount; partition++) {
+
+      String loadPath = CarbonLoaderUtil
+          .getStoreLocation(storeLocation, tableIdentifier, segId, partition + "");
+
+      CarbonFile segmentFolder =
+          FileFactory.getCarbonFile(loadPath, FileFactory.getFileType(loadPath));
+
+      long sizeOfEachSegment = getSizeOfFactFileInLoad(segmentFolder);
+
+      sizeOfOneSegmentAcrossPartition += sizeOfEachSegment;
+    }
+    return sizeOfOneSegmentAcrossPartition;
   }
 
   /**
