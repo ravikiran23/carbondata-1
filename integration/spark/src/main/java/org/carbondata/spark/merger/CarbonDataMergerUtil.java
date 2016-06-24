@@ -435,6 +435,7 @@ public final class CarbonDataMergerUtil {
           // reset the total length to 0.
           segmentsToBeMerged.removeAll(segmentsToBeMerged);
           totalLength = 0;
+          sizeOfOneSegmentAcrossPartition = 0;
           continue;
         }
       }
