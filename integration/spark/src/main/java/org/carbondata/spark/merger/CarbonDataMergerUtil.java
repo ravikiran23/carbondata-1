@@ -656,10 +656,6 @@ public final class CarbonDataMergerUtil {
 
     long compactionSize = 0;
     switch (compactionType) {
-      case MINOR_COMPACTION:
-        compactionSize = CarbonProperties.getInstance().getMinorCompactionSize();
-        break;
-
       case MAJOR_COMPACTION:
         compactionSize = CarbonProperties.getInstance().getMajorCompactionSize();
         break;

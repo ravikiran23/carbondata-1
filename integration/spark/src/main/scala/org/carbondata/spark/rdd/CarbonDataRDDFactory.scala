@@ -301,7 +301,6 @@ object CarbonDataRDDFactory extends Logging {
       compactionType = CompactionType.MAJOR_COMPACTION
     }
     else {
-      compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MINOR_COMPACTION)
       compactionType = CompactionType.MINOR_COMPACTION
     }
 
@@ -478,7 +477,7 @@ object CarbonDataRDDFactory extends Logging {
           .audit("Compaction request received for table " + carbonLoadModel
             .getDatabaseName + "." + carbonLoadModel.getTableName
           )
-        val compactionSize = CarbonDataMergerUtil.getCompactionSize(CompactionType.MINOR_COMPACTION)
+        val compactionSize = 0
 
         val compactionModel = CompactionModel(compactionSize,
           CompactionType.MINOR_COMPACTION,

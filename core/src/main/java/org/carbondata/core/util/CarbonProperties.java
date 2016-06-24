@@ -712,22 +712,6 @@ public final class CarbonProperties {
   }
 
   /**
-   * returns minor compaction size value from carbon properties or default value if it is not valid
-   *
-   * @return
-   */
-  public long getMinorCompactionSize() {
-    long compactionSize;
-    try {
-      compactionSize = Long.parseLong(getProperty(CarbonCommonConstants.MINOR_COMPACTION_SIZE,
-          CarbonCommonConstants.DEFAULT_MINOR_COMPACTION_SIZE));
-    } catch (NumberFormatException e) {
-      compactionSize = Long.parseLong(CarbonCommonConstants.DEFAULT_MINOR_COMPACTION_SIZE);
-    }
-    return compactionSize;
-  }
-
-  /**
    * returns the number of loads to be preserved.
    *
    * @return
