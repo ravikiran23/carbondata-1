@@ -44,9 +44,7 @@ import org.carbondata.core.datastorage.store.filesystem.CarbonFile;
 import org.carbondata.core.datastorage.store.filesystem.CarbonFileFilter;
 import org.carbondata.core.datastorage.store.impl.FileFactory;
 import org.carbondata.core.load.LoadMetadataDetails;
-import org.carbondata.core.locks.CarbonLockFactory;
 import org.carbondata.core.locks.ICarbonLock;
-import org.carbondata.core.locks.LockUsage;
 import org.carbondata.core.util.CarbonProperties;
 import org.carbondata.integration.spark.merger.CompactionType;
 import org.carbondata.lcm.status.SegmentStatusManager;
@@ -147,20 +145,19 @@ public final class CarbonDataMergerUtil {
       String mergeLoadStartTime) {
 
     boolean tableStatusUpdationStatus = false;
+    AbsoluteTableIdentifier absoluteTableIdentifier =
+        carbonLoadModel.getCarbonDataLoadSchema().getCarbonTable().getAbsoluteTableIdentifier();
+
+    SegmentStatusManager segmentStatusManager =
+        new SegmentStatusManager(absoluteTableIdentifier);
 
     ICarbonLock carbonLock =
-        CarbonLockFactory.getCarbonLockObj(metaDataFilepath, LockUsage.TABLE_STATUS_LOCK);
+        segmentStatusManager.getTableStatusLock();
 
     try {
       if (carbonLock.lockWithRetries()) {
         LOGGER.info("Acquired lock for the table " + carbonLoadModel.getDatabaseName() + "."
             + carbonLoadModel.getTableName() + " for table status updation ");
-
-        AbsoluteTableIdentifier absoluteTableIdentifier =
-            carbonLoadModel.getCarbonDataLoadSchema().getCarbonTable().getAbsoluteTableIdentifier();
-
-        SegmentStatusManager segmentStatusManager =
-            new SegmentStatusManager(absoluteTableIdentifier);
 
         CarbonTablePath carbonTablePath = CarbonStorePath
             .getCarbonTablePath(absoluteTableIdentifier.getStorePath(),

@@ -799,8 +799,9 @@ object CarbonDataRDDFactory extends Logging {
               loadStartTime
             )
           if (!status) {
-            val message = "Dataload failure"
+            val message = "Dataload failed due to failure in table status updation."
             logger.audit("Data load is failed.")
+            logger.error("Dataload failed due to failure in table status updation.")
             throw new Exception(message)
           }
         } else if (!carbonLoadModel.isRetentionRequest) {
