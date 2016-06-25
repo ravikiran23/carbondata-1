@@ -451,7 +451,8 @@ object CarbonDataRDDFactory extends Logging {
 
     /**
      * This will scan all the segments and submit the loads to be merged into the executor.
-     * @param futureList
+      *
+      * @param futureList
      */
     def scanSegmentsAndSubmitJob(futureList: util.List[Future[Void]]): Unit = {
       breakable {
@@ -605,8 +606,16 @@ object CarbonDataRDDFactory extends Logging {
       // Deleting the any partially loaded data if present.
       // in some case the segment folder which is present in store will not have entry in status.
       // so deleting those folders.
-      CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel, false)
-
+      try {
+        CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel, false)
+      }
+      catch {
+        case e: Exception =>
+          logger
+            .error("Exception in data load while clean up of stale segments " + e
+              .getMessage
+            )
+      }
 
       // reading the start time of data load.
       val loadStartTime = CarbonLoaderUtil.readCurrentTime()
