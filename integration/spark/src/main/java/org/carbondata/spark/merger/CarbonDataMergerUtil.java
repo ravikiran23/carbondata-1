@@ -588,47 +588,20 @@ public final class CarbonDataMergerUtil {
       }
     }
 
-    // get number of loads which are unmerged.
-    int unmergedSegments = getNumberOfSegmentsUnmerged(validList);
-
     // check if valid list is big enough for removing the number of seg to be retained.
-    if (unmergedSegments > numberOfSegToBeRetained) {
-      // last element
-      int removingIndex = validList.size() - 1;
-      for (int i = 0; i < numberOfSegToBeRetained; i++) {
+    // last element
+    int removingIndex = validList.size() - 1;
 
-        // remove last segment if it is not a merged segment
-        if (!isMergedSegment(validList.get(removingIndex).getLoadName())) {
-
-          validList.remove(removingIndex);
-          removingIndex--;
-        } else {
-          // if the last segment is already a merged segment then need to delete the previous one.
-          removingIndex--;
-          i--;
-        }
-
+    for (int i = validList.size(); i > 0; i--) {
+      if (numberOfSegToBeRetained == 0) {
+        break;
       }
-      return validList;
+      // remove last segment
+      validList.remove(removingIndex--);
+      numberOfSegToBeRetained--;
     }
+    return validList;
 
-    // case where there is no 2 loads available for merging.
-    return new ArrayList<LoadMetadataDetails>(0);
-  }
-
-  /**
-   *
-   * @param validList
-   * @return
-   */
-  private static int getNumberOfSegmentsUnmerged(List<LoadMetadataDetails> validList) {
-    int count = 0;
-    for(LoadMetadataDetails seg : validList){
-      if(!isMergedSegment(seg.getLoadName())){
-        count++;
-      }
-    }
-    return count;
   }
 
   /**
