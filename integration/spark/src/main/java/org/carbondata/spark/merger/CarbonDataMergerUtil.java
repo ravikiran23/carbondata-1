@@ -588,7 +588,8 @@ public final class CarbonDataMergerUtil {
       }
     }
 
-    // handle the retaining of valid loads,
+    // get number of loads which are unmerged.
+    int unmergedSegments = getNumberOfSegmentsUnmerged(validList);
 
     // check if valid list is big enough for removing the number of seg to be retained.
     if (validList.size() > numberOfSegToBeRetained) {
@@ -621,6 +622,18 @@ public final class CarbonDataMergerUtil {
 
     // case where there is no 2 loads available for merging.
     return new ArrayList<LoadMetadataDetails>(0);
+  }
+
+  /**
+   *
+   * @param validList
+   * @return
+   */
+  private static int getNumberOfSegmentsUnmerged(List<LoadMetadataDetails> validList) {
+    for(LoadMetadataDetails seg : validList){
+
+    }
+    return 0;
   }
 
   /**

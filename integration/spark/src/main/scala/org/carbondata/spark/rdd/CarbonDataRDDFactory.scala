@@ -384,6 +384,26 @@ object CarbonDataRDDFactory extends Logging {
         override def run(): Unit = {
 
           while (loadsToMerge.size() > 1) {
+          // Deleting the any partially loaded data if present.
+          // in some case the segment folder which is present in store will not have entry in
+          // status.
+          // so deleting those folders.
+          try {
+            CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel)
+          }
+          catch {
+            case e: Exception =>
+              logger
+                .error("Exception in compaction thread while clean up of stale segments " + e
+                  .getMessage
+                )
+          }
+          val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
+            CarbonCommonConstants
+              .DEFAULT_COLLECTION_SIZE
+          )
+          breakable {
+            while (true) {
 
             val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
               CarbonCommonConstants
