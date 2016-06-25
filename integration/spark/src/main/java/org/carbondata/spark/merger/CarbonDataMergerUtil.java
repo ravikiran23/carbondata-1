@@ -592,29 +592,21 @@ public final class CarbonDataMergerUtil {
     int unmergedSegments = getNumberOfSegmentsUnmerged(validList);
 
     // check if valid list is big enough for removing the number of seg to be retained.
-    if (validList.size() > numberOfSegToBeRetained) {
-
-      // after the sort remove the loads from the last as per the retaining count.
-      Collections.sort(validList, new Comparator<LoadMetadataDetails>() {
-
-        @Override public int compare(LoadMetadataDetails seg1, LoadMetadataDetails seg2) {
-          double segNumber1 = Double.parseDouble(seg1.getLoadName());
-          double segNumber2 = Double.parseDouble(seg2.getLoadName());
-
-          if ((segNumber1 - segNumber2) < 0) {
-            return -1;
-          } else if ((segNumber1 - segNumber2) > 0) {
-            return 1;
-          }
-          return 0;
-
-        }
-      });
-
+    if (unmergedSegments > numberOfSegToBeRetained) {
+      // last element
+      int removingIndex = validList.size() - 1;
       for (int i = 0; i < numberOfSegToBeRetained; i++) {
 
-        // remove last segment
-        validList.remove(validList.size() - 1);
+        // remove last segment if it is not a merged segment
+        if (!isMergedSegment(validList.get(removingIndex).getLoadName())) {
+
+          validList.remove(removingIndex);
+          removingIndex--;
+        } else {
+          // if the last segment is already a merged segment then need to delete the previous one.
+          removingIndex--;
+          i--;
+        }
 
       }
       return validList;
@@ -630,10 +622,13 @@ public final class CarbonDataMergerUtil {
    * @return
    */
   private static int getNumberOfSegmentsUnmerged(List<LoadMetadataDetails> validList) {
+    int count = 0;
     for(LoadMetadataDetails seg : validList){
-
+      if(!isMergedSegment(seg.getLoadName())){
+        count++;
+      }
     }
-    return 0;
+    return count;
   }
 
   /**

@@ -398,17 +398,11 @@ object CarbonDataRDDFactory extends Logging {
                   .getMessage
                 )
           }
-          val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
-            CarbonCommonConstants
-              .DEFAULT_COLLECTION_SIZE
-          )
-          breakable {
-            while (true) {
-
             val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
               CarbonCommonConstants
                 .DEFAULT_COLLECTION_SIZE
             )
+
             scanSegmentsAndSubmitJob(futureList)
 
             futureList.asScala.foreach(future => {
