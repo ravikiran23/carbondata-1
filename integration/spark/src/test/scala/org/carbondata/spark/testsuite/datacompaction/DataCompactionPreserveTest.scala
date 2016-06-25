@@ -71,21 +71,20 @@ class DataCompactionPreserveTest extends QueryTest with BeforeAndAfterAll {
           new CarbonTableIdentifier("default", "preserveSegments", "1")
         )
     )
-    var segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
     while (status && noOfRetries < 10) {
 
-
+      var segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
       if (!segments.contains("0.1")) {
         // wait for 2 seconds for compaction to complete.
         Thread.sleep(2000)
         noOfRetries += 1
-        segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
       }
       else {
         status = false
       }
     }
-    segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
+
+    var segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
     if (!status) {
       if (segments.contains("3") && segments.contains("4")) {
         assert(true);
