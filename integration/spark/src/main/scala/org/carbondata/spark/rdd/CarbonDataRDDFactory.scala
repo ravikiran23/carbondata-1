@@ -424,9 +424,9 @@ object CarbonDataRDDFactory extends Logging {
     }
 
     /**
-      * This will scan all the segments and submit the loads to be merged into the executor.
-      * @param futureList
-      */
+     * This will scan all the segments and submit the loads to be merged into the executor.
+     * @param futureList
+     */
     def scanSegmentsAndSubmitJob(futureList: util.List[Future[Void]]): Unit = {
       breakable {
         while (true) {
