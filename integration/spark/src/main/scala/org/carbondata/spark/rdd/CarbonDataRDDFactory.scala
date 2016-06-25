@@ -389,7 +389,7 @@ object CarbonDataRDDFactory extends Logging {
           // status.
           // so deleting those folders.
           try {
-            CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel)
+            CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel, true)
           }
           catch {
             case e: Exception =>
@@ -593,7 +593,7 @@ object CarbonDataRDDFactory extends Logging {
       // Deleting the any partially loaded data if present.
       // in some case the segment folder which is present in store will not have entry in status.
       // so deleting those folders.
-      CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel)
+      CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel, false)
 
 
       // reading the start time of data load.
