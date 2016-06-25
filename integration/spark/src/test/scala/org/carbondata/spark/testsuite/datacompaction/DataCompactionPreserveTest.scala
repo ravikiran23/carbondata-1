@@ -56,6 +56,7 @@ class DataCompactionPreserveTest extends QueryTest with BeforeAndAfterAll {
     sql("LOAD DATA fact from '" + csvFilePath3 + "' INTO CUBE preserveSegments  PARTITIONDATA" +
       "(DELIMITER ',', QUOTECHAR '\"')"
     )
+    CarbonProperties.getInstance().addProperty("carbon.numberof.preserve.segments", "2")
     // compaction will happen here.
     sql("alter table preserveSegments compact 'major'"
     )
@@ -71,7 +72,7 @@ class DataCompactionPreserveTest extends QueryTest with BeforeAndAfterAll {
           new CarbonTableIdentifier("default", "preserveSegments", "1")
         )
     )
-    while (status && noOfRetries < 10) {
+    while (status && noOfRetries < 20) {
 
       var segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
       if (!segments.contains("0.1")) {
@@ -85,13 +86,11 @@ class DataCompactionPreserveTest extends QueryTest with BeforeAndAfterAll {
     }
 
     var segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
-    if (!status) {
-      if (segments.contains("3") && segments.contains("4")) {
-        assert(true);
-      }
-      else {
-        assert(false);
-      }
+    segments.foreach(seg =>
+    System.out.println("valid segment after compaction is " + seg)
+    )
+    if (segments.contains("3") && segments.contains("4")) {
+      assert(true);
     }
     else {
       assert(false);
