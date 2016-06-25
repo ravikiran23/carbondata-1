@@ -771,7 +771,7 @@ public final class CarbonProperties {
     int i = 0;
     for (String levelSize : levels) {
       try {
-        int size = Integer.parseInt(levelSize);
+        int size = Integer.parseInt(levelSize.trim());
         if(validate(size,100,0,-1) < 0 ){
           // if given size is out of boundary then take default value for all levels.
           return null;

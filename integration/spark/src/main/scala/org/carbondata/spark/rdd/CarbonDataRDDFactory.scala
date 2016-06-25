@@ -369,7 +369,7 @@ object CarbonDataRDDFactory extends Logging {
     readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
     var segList: util.List[LoadMetadataDetails] = carbonLoadModel.getLoadMetadataDetails
 
-    val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
+    var loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
       hdfsStoreLocation,
       carbonLoadModel,
       partitioner.partitionCount,
@@ -383,49 +383,14 @@ object CarbonDataRDDFactory extends Logging {
       new Thread {
         override def run(): Unit = {
 
-          val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
-            CarbonCommonConstants
-              .DEFAULT_COLLECTION_SIZE
-          )
-          breakable {
-            while (true) {
+          while (loadsToMerge.size() > 1) {
 
-              val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
-                hdfsStoreLocation,
-                carbonLoadModel,
-                partitioner.partitionCount,
-                compactionModel.compactionSize,
-                segList,
-                compactionModel.compactionType
-              )
-              if (loadsToMerge.size() > 1) {
-                loadsToMerge.asScala.foreach(seg => {
-                  logger.info("load identified for merge is " + seg.getLoadName)
-                }
-                )
+            val futureList: util.List[Future[Void]] = new util.ArrayList[Future[Void]](
+              CarbonCommonConstants
+                .DEFAULT_COLLECTION_SIZE
+            )
+            scanSegmentsAndSubmitJob(futureList)
 
-                val future: Future[Void] = executor.submit(new CompactionCallable(hdfsStoreLocation,
-                  carbonLoadModel,
-                  partitioner,
-                  storeLocation,
-                  compactionModel.carbonTable,
-                  kettleHomePath,
-                  compactionModel.cubeCreationTime,
-                  loadsToMerge,
-                  sqlContext
-                )
-                )
-                futureList.add(future)
-                segList = CarbonDataMergerUtil
-                  .filterOutAlreadyMergedSegments(segList, loadsToMerge)
-              }
-              else {
-                executor.shutdown()
-                break
-              }
-            }
-          }
-          try {
             futureList.asScala.foreach(future => {
               try {
                 future.get
@@ -436,23 +401,70 @@ object CarbonDataRDDFactory extends Logging {
               }
             }
             )
-          }
-          finally {
-            startCompactionThreads(sqlContext,
-              carbonLoadModel,
-              partitioner,
+            // scan again and deterrmine if anything is there to merge again.
+            readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
+            segList = carbonLoadModel.getLoadMetadataDetails
+
+            loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
               hdfsStoreLocation,
-              kettleHomePath,
-              storeLocation,
-              compactionModel,
-              compactionLock
+              carbonLoadModel,
+              partitioner.partitionCount,
+              compactionModel.compactionSize,
+              segList,
+              compactionModel.compactionType
             )
           }
+          executor.shutdown()
+          compactionLock.unlock()
         }
       }.start
     }
     else {
       compactionLock.unlock()
+    }
+
+    /**
+      * This will scan all the segments and submit the loads to be merged into the executor.
+      * @param futureList
+      */
+    def scanSegmentsAndSubmitJob(futureList: util.List[Future[Void]]): Unit = {
+      breakable {
+        while (true) {
+
+          val loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
+            hdfsStoreLocation,
+            carbonLoadModel,
+            partitioner.partitionCount,
+            compactionModel.compactionSize,
+            segList,
+            compactionModel.compactionType
+          )
+          if (loadsToMerge.size() > 1) {
+            loadsToMerge.asScala.foreach(seg => {
+              logger.info("load identified for merge is " + seg.getLoadName)
+            }
+            )
+
+            val future: Future[Void] = executor.submit(new CompactionCallable(hdfsStoreLocation,
+              carbonLoadModel,
+              partitioner,
+              storeLocation,
+              compactionModel.carbonTable,
+              kettleHomePath,
+              compactionModel.cubeCreationTime,
+              loadsToMerge,
+              sqlContext
+            )
+            )
+            futureList.add(future)
+            segList = CarbonDataMergerUtil
+              .filterOutAlreadyMergedSegments(segList, loadsToMerge)
+          }
+          else {
+            break
+          }
+        }
+      }
     }
   }
 

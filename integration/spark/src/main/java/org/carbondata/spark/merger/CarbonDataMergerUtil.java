@@ -62,36 +62,19 @@ public final class CarbonDataMergerUtil {
 
   }
 
+  /**
+   * Returns the size of all the carbondata files present in the segment.
+   * @param carbonFile
+   * @return
+   */
   private static long getSizeOfFactFileInLoad(CarbonFile carbonFile) {
     long factSize = 0;
 
-    // check if update fact is present.
-
-    CarbonFile[] factFileUpdated = carbonFile.listFiles(new CarbonFileFilter() {
-
-      @Override public boolean accept(CarbonFile file) {
-        if (file.getName().endsWith(CarbonCommonConstants.FACT_UPDATE_EXTENSION)) {
-          return true;
-        }
-        return false;
-      }
-    });
-
-    if (factFileUpdated.length != 0) {
-      for (CarbonFile fact : factFileUpdated) {
-        factSize += fact.getSize();
-      }
-      return factSize;
-    }
-
-    // normal fact case.
+    // carbon data file case.
     CarbonFile[] factFile = carbonFile.listFiles(new CarbonFileFilter() {
 
       @Override public boolean accept(CarbonFile file) {
-        if (file.getName().endsWith(CarbonCommonConstants.FACT_FILE_EXT)) {
-          return true;
-        }
-        return false;
+        return CarbonTablePath.isCarbonDataFile(file.getName());
       }
     });
 
@@ -411,8 +394,6 @@ public final class CarbonDataMergerUtil {
     CarbonTableIdentifier tableIdentifier =
         carbonLoadModel.getCarbonDataLoadSchema().getCarbonTable().getCarbonTableIdentifier();
 
-    // variable to store one  segment size across partition.
-    long sizeOfOneSegmentAcrossPartition = 0;
 
     // total length
     long totalLength = 0;
@@ -421,10 +402,9 @@ public final class CarbonDataMergerUtil {
     for (LoadMetadataDetails segment : listOfSegmentsAfterPreserve) {
 
       String segId = segment.getLoadName();
-
-      sizeOfOneSegmentAcrossPartition =
-          getSizeOfOneSegmentAcrossPartition(partitionCount, storeLocation, tableIdentifier,
-              sizeOfOneSegmentAcrossPartition, segId);
+      // variable to store one  segment size across partition.
+      long sizeOfOneSegmentAcrossPartition =
+          getSizeOfOneSegmentAcrossPartition(partitionCount, storeLocation, tableIdentifier, segId);
 
       // if size of a segment is greater than the Major compaction size. then ignore it.
       if (sizeOfOneSegmentAcrossPartition > (compactionSize * 1024 * 1024)) {
@@ -433,9 +413,8 @@ public final class CarbonDataMergerUtil {
           break;
         } else { // if only one segment is found then remove the earlier one in list.
           // reset the total length to 0.
-          segmentsToBeMerged.removeAll(segmentsToBeMerged);
+          segmentsToBeMerged = new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
           totalLength = 0;
-          sizeOfOneSegmentAcrossPartition = 0;
           continue;
         }
       }
@@ -450,14 +429,12 @@ public final class CarbonDataMergerUtil {
           break;
         } else { // if only one segment is found then remove the earlier one in list and put this.
           // reset the total length to the current identified segment.
-          segmentsToBeMerged.removeAll(segmentsToBeMerged);
+          segmentsToBeMerged = new ArrayList<>(CarbonCommonConstants.DEFAULT_COLLECTION_SIZE);
           segmentsToBeMerged.add(segment);
           totalLength = sizeOfOneSegmentAcrossPartition;
         }
       }
 
-      // after all partitions
-      sizeOfOneSegmentAcrossPartition = 0;
     }
 
     return segmentsToBeMerged;
@@ -468,12 +445,12 @@ public final class CarbonDataMergerUtil {
    * @param partitionCount
    * @param storeLocation
    * @param tableIdentifier
-   * @param sizeOfOneSegmentAcrossPartition
    * @param segId
    * @return
    */
   private static long getSizeOfOneSegmentAcrossPartition(int partitionCount, String storeLocation,
-      CarbonTableIdentifier tableIdentifier, long sizeOfOneSegmentAcrossPartition, String segId) {
+      CarbonTableIdentifier tableIdentifier, String segId) {
+    long sizeOfOneSegmentAcrossPartition = 0;
     // calculate size across partitions
     for (int partition = 0; partition < partitionCount; partition++) {
 
