@@ -31,6 +31,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution.command.{AggregateTableAttributes, Partitioner}
+import org.apache.spark.sql.hive.client.ClientInterface
 import org.apache.spark.sql.types._
 
 import org.carbondata.common.logging.LogServiceFactory
@@ -279,7 +280,7 @@ class CarbonMetastoreCatalog(hive: HiveContext, val storePath: String, client: C
                     // information and reload when required.
                     Partitioner("org.carbondata.spark.partition.api.impl." +
                                 "SampleDataPartitionerImpl",
-                      Array(""), 1, DistributionUtil.getNodeList(hive.sparkContext)))
+                      Array(""), 1, Array("")))
                 }
               }
             })
