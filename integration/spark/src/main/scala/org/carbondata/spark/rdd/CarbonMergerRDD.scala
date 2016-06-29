@@ -25,12 +25,15 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.CarbonContext
 import org.apache.spark.sql.execution.command.CarbonMergerMapping
+import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, DistributionUtil}
 
 import org.carbondata.common.logging.LogServiceFactory
 import org.carbondata.core.carbon.{AbsoluteTableIdentifier, CarbonTableIdentifier}
-import org.carbondata.core.carbon.datastore.block.{SegmentProperties, TableBlockInfo, TaskBlockInfo}
+import org.carbondata.core.carbon.datastore.block.{Distributable, SegmentProperties, TableBlockInfo, TableTaskInfo, TaskBlockInfo}
 import org.carbondata.core.carbon.metadata.blocklet.DataFileFooter
+import org.carbondata.core.carbon.path.CarbonTablePath
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.util.CarbonProperties
 import org.carbondata.hadoop.{CarbonInputFormat, CarbonInputSplit}
@@ -40,7 +43,6 @@ import org.carbondata.query.carbon.result.RowResult
 import org.carbondata.query.carbon.result.iterator.RawResultIterator
 import org.carbondata.spark.MergeResult
 import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
-import org.carbondata.spark.merger.CarbonDataMergerUtil
 import org.carbondata.spark.splits.TableSplit
 import org.carbondata.spark.util.QueryPlanUtil
 
@@ -49,7 +51,8 @@ class CarbonMergerRDD[K, V](
   sc: SparkContext,
   result: MergeResult[K, V],
   carbonLoadModel: CarbonLoadModel,
-  carbonMergerMapping : CarbonMergerMapping)
+  carbonMergerMapping : CarbonMergerMapping,
+  confExecutorsTemp: String)
   extends RDD[(K, V)](sc, Nil) with Logging {
 
   val defaultParallelism = sc.defaultParallelism
@@ -170,6 +173,7 @@ class CarbonMergerRDD[K, V](
   }
 
   override def getPartitions: Array[Partition] = {
+
     val startTime = System.currentTimeMillis()
     val absoluteTableIdentifier: AbsoluteTableIdentifier = new AbsoluteTableIdentifier(
       hdfsStoreLocation, new CarbonTableIdentifier(schemaName, factTableName, tableId)
@@ -177,10 +181,17 @@ class CarbonMergerRDD[K, V](
     val (carbonInputFormat: CarbonInputFormat[RowResult], job: Job) =
       QueryPlanUtil.createCarbonInputFormat(absoluteTableIdentifier)
     val result = new util.ArrayList[Partition](defaultParallelism)
-    val mapsOfNodeBlockMapping: util.List[util.Map[String, util.List[TableBlockInfo]]] = new
-        java.util.ArrayList[util.Map[String, util.List[TableBlockInfo]]]()
+
+    var nodeMapping: util.Map[String, util.List[Distributable]] = new
+        util.HashMap[String, List[Distributable]]
+
     var noOfBlocks = 0
+
+    var taskInfoList = new util.ArrayList[Distributable]
+
     for (eachSeg <- carbonMergerMapping.validSegments) {
+      val taskIdMapping: util.Map[String, util.List[TableBlockInfo]] = new
+          util.HashMap[String, List[TableBlockInfo]]
 
       job.getConfiguration.set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS, eachSeg)
 
@@ -194,40 +205,92 @@ class CarbonMergerRDD[K, V](
           inputSplit.getLocations, inputSplit.getLength
         )
       )
-      noOfBlocks += blocksOfOneSegment.size
-      mapsOfNodeBlockMapping.add(CarbonLoaderUtil.nodeBlockMapping(blocksOfOneSegment.asJava, -1))
-    }
 
-    // combining the segments output i.e combining list of maps.
-    val nodeBlockMapping: util.Map[String, util.List[TableBlockInfo]] =
-      CarbonDataMergerUtil.combineNodeBlockMaps(mapsOfNodeBlockMapping)
-
-
-    var i = 0
-    // Create Spark Partition for each task and assign blocks
-    nodeBlockMapping.asScala.foreach { entry =>
-      val blocksPerNode = entry._2
-      if (blocksPerNode.size() != 0) {
-        result.add(new CarbonSparkPartition(id, i, Seq(entry._1).toArray, blocksPerNode))
-        i += 1
+      blocksOfOneSegment.foreach(tableBlockInfo => {
+        val taskNo = CarbonTablePath.DataFileUtil.getTaskNo(tableBlockInfo.getFilePath)
+        val blockList = taskIdMapping.get(taskNo)
+        if (null == blockList) {
+          val blockListTemp = new util.ArrayList[TableBlockInfo]()
+          blockListTemp.add(tableBlockInfo)
+          taskIdMapping.put(taskNo, blockListTemp)
+        }
+        else {
+          blockList.add(tableBlockInfo)
+        }
       }
-    }
-   // val noOfBlocks = blockList.size
-    val noOfNodes = nodeBlockMapping.size
-    val noOfTasks = result.size()
-    logInfo(s"Identified  no.of.Blocks: $noOfBlocks,"
-      + s"parallelism: $defaultParallelism , no.of.nodes: $noOfNodes, no.of.tasks: $noOfTasks"
-    )
-    logInfo("Time taken to identify Blocks to scan : " + (System
-      .currentTimeMillis() - startTime)
-    )
-    for (j <- 0 until result.size() - 1) {
-      val cp = result.get(j).asInstanceOf[CarbonSparkPartition]
-      logInfo(s"Node : " + cp.locations.toSeq.mkString(",")
-        + ", No.Of Blocks : " + cp.tableBlockInfos.size()
+      )
+      noOfBlocks += blocksOfOneSegment.size
+      var index = 0
+       taskIdMapping.asScala.foreach(
+        entry =>
+          taskInfoList.add(new TableTaskInfo(entry._1, entry._2).asInstanceOf[Distributable])
       )
     }
-    result.toArray(new Array[Partition](result.size()))
+      nodeMapping =
+        CarbonLoaderUtil.nodeBlockMapping(taskInfoList, -1)
+
+
+
+     /* taskIdMapping.asScala.foreach(entry => {
+        val blockList = entry._2
+        val node = CarbonCompactionUtil.maxNoNodes(blockList, index)
+        var blockListTemp = nodeMapping.get(node)
+        if (null == blockListTemp) {
+          blockListTemp = new util.ArrayList[TableBlockInfo]
+          blockListTemp.addAll(blockList)
+          nodeMapping.put(node, blockListTemp)
+        }
+        else {
+          blockListTemp.addAll(blockList)
+        }
+        index = index + 1
+      }) */
+
+    val confExecutors = confExecutorsTemp.toInt
+    val requiredExecutors = if (nodeMapping.size > confExecutors) {
+      confExecutors
+    } else { nodeMapping.size() }
+    CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
+    logInfo("No.of Executors required=" + requiredExecutors
+            + " , spark.executor.instances=" + confExecutors
+            + ", no.of.nodes where data present=" + nodeMapping.size())
+    val nodes = DistributionUtil.getNodeList(sparkContext)
+    var i = 0
+    // Create Spark Partition for each task and assign blocks
+    nodeMapping.asScala.foreach { entry =>
+
+      val list = new util.ArrayList[TableBlockInfo]
+      entry._2.asScala.foreach(taskInfo => {
+         val blocksPerNode = taskInfo.asInstanceOf[TableTaskInfo]
+         list.addAll(blocksPerNode.getTableBlockInfoList)
+       })
+      if (list.size() != 0) {
+           result
+             .add(new CarbonSparkPartition(id,
+               i,
+               Seq(entry._1).toArray,
+               list
+             )
+             )
+           i += 1
+         }
+    }
+    // val noOfBlocks = blockList.size
+    val noOfNodes = nodes.size
+    val noOfTasks = result.size
+    logInfo(s"Identified  no.of.Blocks: $noOfBlocks,"
+            + s"parallelism: $defaultParallelism , no.of.nodes: $noOfNodes, no.of.tasks: $noOfTasks"
+    )
+    logInfo("Time taken to identify Blocks to scan : " + (System
+                                                            .currentTimeMillis() - startTime)
+    )
+    for (j <- 0 until result.size ) {
+      val cp = result.get(j).asInstanceOf[CarbonSparkPartition]
+      logInfo(s"Node : " + cp.locations.toSeq.mkString(",")
+              + ", No.Of Blocks : " + cp.tableBlockInfos.size
+      )
+    }
+    result.toArray(new Array[Partition](result.size))
   }
 }
 
