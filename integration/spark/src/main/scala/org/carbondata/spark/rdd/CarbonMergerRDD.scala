@@ -229,23 +229,6 @@ class CarbonMergerRDD[K, V](
       nodeMapping =
         CarbonLoaderUtil.nodeBlockMapping(taskInfoList, -1)
 
-
-
-     /* taskIdMapping.asScala.foreach(entry => {
-        val blockList = entry._2
-        val node = CarbonCompactionUtil.maxNoNodes(blockList, index)
-        var blockListTemp = nodeMapping.get(node)
-        if (null == blockListTemp) {
-          blockListTemp = new util.ArrayList[TableBlockInfo]
-          blockListTemp.addAll(blockList)
-          nodeMapping.put(node, blockListTemp)
-        }
-        else {
-          blockListTemp.addAll(blockList)
-        }
-        index = index + 1
-      }) */
-
     val confExecutors = confExecutorsTemp.toInt
     val requiredExecutors = if (nodeMapping.size > confExecutors) {
       confExecutors
