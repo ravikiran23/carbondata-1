@@ -59,7 +59,7 @@ public class TableTaskInfo extends Distributable {
   }
 
   /**
-   * Finding the maximum node which has the blocks.
+   * Finding which node has the maximum number of blocks for it.
    * @param blockList
    * @return
    */
@@ -68,6 +68,8 @@ public class TableTaskInfo extends Distributable {
     Integer maxOccurence = 0;
     String maxNode = null;
     Map<String, Integer> nodeAndOccurenceMapping = new TreeMap<>();
+
+    // populate the map of node and number of occurences of that node.
     for (TableBlockInfo block : blockList) {
       for (String node : block.getLocations()) {
         Integer nodeOccurence = nodeAndOccurenceMapping.get(node);
@@ -80,24 +82,31 @@ public class TableTaskInfo extends Distributable {
     }
     Integer previousValueOccurence = null;
 
+    // check which node is occured maximum times.
     for (Map.Entry<String, Integer> entry : nodeAndOccurenceMapping.entrySet()) {
+      // finding the maximum node.
       if (entry.getValue() > maxOccurence) {
         maxOccurence = entry.getValue();
         maxNode = entry.getKey();
       }
+      // first time scenario. initialzing the previous value.
       if (null == previousValueOccurence) {
         previousValueOccurence = entry.getValue();
       } else {
+        // for the case where all the nodes have same number of blocks then
+        // we need to return complete list instead of max node.
         if (previousValueOccurence != entry.getValue()) {
           useIndex = false;
         }
       }
     }
 
+    // if all the nodes have equal occurence then returning the complete key set.
     if (useIndex) {
       return new ArrayList<>(nodeAndOccurenceMapping.keySet());
     }
 
+    // if any max node is found then returning the max node.
     List<String> node =  new ArrayList<>(1);
     node.add(maxNode);
     return node;

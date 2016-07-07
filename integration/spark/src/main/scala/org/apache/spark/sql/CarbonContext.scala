@@ -152,6 +152,13 @@ object CarbonContext {
 
   def datasourceName: String = "org.apache.carbondata.format"
 
+  /**
+   *
+   * Requesting the extra executors other than the existing ones.
+   * @param sc
+   * @param numExecutors
+   * @return
+   */
   final def ensureExecutors(sc: SparkContext, numExecutors: Int): Boolean = {
     sc.schedulerBackend match {
       case b: CoarseGrainedSchedulerBackend =>

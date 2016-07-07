@@ -83,7 +83,7 @@ object Compactor {
     carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
       .readLoadMetadata(carbonTable.getMetaDataFilepath()).toList.asJava
     )
-    val execInstance = sc.sparkContext.getConf.get("spark.executor.instances", "3")
+    val execInstance = sc.sparkContext.getConf.get("spark.executor.instances", "1")
 
     val mergeStatus = new CarbonMergerRDD(
       sc.sparkContext,

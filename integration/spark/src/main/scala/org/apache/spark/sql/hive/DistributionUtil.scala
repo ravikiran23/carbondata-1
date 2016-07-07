@@ -16,10 +16,17 @@
  */
 package org.apache.spark.sql.hive
 
+
 import java.net.{InetAddress, InterfaceAddress, NetworkInterface}
+import java.util
+
+import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkContext
-import scala.collection.JavaConverters._
+import org.apache.spark.sql.CarbonContext
+
+import org.carbondata.core.carbon.datastore.block.Distributable
+
 /**
  *
  */
@@ -89,5 +96,29 @@ object DistributionUtil {
       }
       case _ => Nil
     }
+  }
+
+  /**
+   *
+   * Checking if the existing executors is greater than configured executors, if yes
+   * returning configured executors.
+   *
+   * @param nodeMapping
+   * @param confExecutorsTemp
+   * @param sparkContext
+   * @return
+   */
+  def ensureExecutorsAndGetNodeList(nodeMapping: util.Map[String, util.List[Distributable]],
+    confExecutorsTemp: String,
+    sparkContext: SparkContext):
+  Array[String] = {
+    val confExecutors = confExecutorsTemp.toInt
+    val requiredExecutors = if (nodeMapping.size > confExecutors) {
+      confExecutors
+    } else {nodeMapping.size()}
+
+    CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
+    val nodes = DistributionUtil.getNodeList(sparkContext)
+    nodes
   }
 }

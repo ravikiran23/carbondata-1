@@ -26,7 +26,7 @@ import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.CarbonContext
-import org.apache.spark.sql.execution.command.CarbonMergerMapping
+import org.apache.spark.sql.execution.command.{CarbonMergerMapping, NodeInfo}
 import org.apache.spark.sql.hive.{CarbonMetastoreCatalog, DistributionUtil}
 
 import org.carbondata.common.logging.LogServiceFactory
@@ -182,16 +182,20 @@ class CarbonMergerRDD[K, V](
       QueryPlanUtil.createCarbonInputFormat(absoluteTableIdentifier)
     val result = new util.ArrayList[Partition](defaultParallelism)
 
+    // mapping of the node and block list.
     var nodeMapping: util.Map[String, util.List[Distributable]] = new
-        util.HashMap[String, List[Distributable]]
+        util.HashMap[String, util.List[Distributable]]
 
     var noOfBlocks = 0
 
     var taskInfoList = new util.ArrayList[Distributable]
 
+    // for each valid segment.
     for (eachSeg <- carbonMergerMapping.validSegments) {
+
+      // map for keeping the relation of a task and its blocks.
       val taskIdMapping: util.Map[String, util.List[TableBlockInfo]] = new
-          util.HashMap[String, List[TableBlockInfo]]
+          util.HashMap[String, util.List[TableBlockInfo]]
 
       job.getConfiguration.set(CarbonInputFormat.INPUT_SEGMENT_NUMBERS, eachSeg)
 
@@ -199,6 +203,7 @@ class CarbonMergerRDD[K, V](
       val splits = carbonInputFormat.getSplits(job)
       val carbonInputSplits = splits.asScala.map(_.asInstanceOf[CarbonInputSplit])
 
+      // take the blocks of one segment.
       val blocksOfOneSegment = carbonInputSplits.map(inputSplit =>
         new TableBlockInfo(inputSplit.getPath.toString,
           inputSplit.getStart, inputSplit.getSegmentId,
@@ -206,6 +211,7 @@ class CarbonMergerRDD[K, V](
         )
       )
 
+      // populate the task and its block mapping.
       blocksOfOneSegment.foreach(tableBlockInfo => {
         val taskNo = CarbonTablePath.DataFileUtil.getTaskNo(tableBlockInfo.getFilePath)
         val blockList = taskIdMapping.get(taskNo)
@@ -219,6 +225,7 @@ class CarbonMergerRDD[K, V](
         }
       }
       )
+
       noOfBlocks += blocksOfOneSegment.size
       var index = 0
        taskIdMapping.asScala.foreach(
@@ -226,6 +233,7 @@ class CarbonMergerRDD[K, V](
           taskInfoList.add(new TableTaskInfo(entry._1, entry._2).asInstanceOf[Distributable])
       )
     }
+    // send complete list of blocks to the mapping util.
       nodeMapping =
         CarbonLoaderUtil.nodeBlockMapping(taskInfoList, -1)
 
@@ -235,17 +243,28 @@ class CarbonMergerRDD[K, V](
     } else { nodeMapping.size() }
     CarbonContext.ensureExecutors(sparkContext, requiredExecutors)
     logInfo("No.of Executors required=" + requiredExecutors
-            + " , spark.executor.instances=" + confExecutors
-            + ", no.of.nodes where data present=" + nodeMapping.size())
+      + " , spark.executor.instances=" + confExecutors
+      + ", no.of.nodes where data present=" + nodeMapping.size())
     val nodes = DistributionUtil.getNodeList(sparkContext)
+
+
     var i = 0
+
+    val nodeTaskBlocksMap: util.Map[String, util.List[NodeInfo]] = new util.HashMap[String, util
+    .List[NodeInfo]]()
+
     // Create Spark Partition for each task and assign blocks
     nodeMapping.asScala.foreach { entry =>
+
+      val taskBlockList: List[NodeInfo] = new util.ArrayList[NodeInfo](0)
+      nodeTaskBlocksMap.put(entry._1, taskBlockList)
 
       val list = new util.ArrayList[TableBlockInfo]
       entry._2.asScala.foreach(taskInfo => {
          val blocksPerNode = taskInfo.asInstanceOf[TableTaskInfo]
          list.addAll(blocksPerNode.getTableBlockInfoList)
+        taskBlockList
+          .add(new NodeInfo(blocksPerNode.getTaskId, blocksPerNode.getTableBlockInfoList.size))
        })
       if (list.size() != 0) {
            result
@@ -258,6 +277,16 @@ class CarbonMergerRDD[K, V](
            i += 1
          }
     }
+
+    // print the node info along with task and number of blocks for the task.
+
+    nodeTaskBlocksMap.asScala.foreach((entry : (String, List[NodeInfo])) => {
+      logInfo(s"for the node $entry._1" )
+      for (elem <- entry._2.asScala) {
+        logInfo("Task ID is " + elem.TaskId + "no. of blocks is " + elem.noOfBlocks)
+      }
+    } )
+
     // val noOfBlocks = blockList.size
     val noOfNodes = nodes.size
     val noOfTasks = result.size
@@ -275,6 +304,7 @@ class CarbonMergerRDD[K, V](
     }
     result.toArray(new Array[Partition](result.size))
   }
+
 }
 
 class CarbonLoadPartition(rddId: Int, val idx: Int, @transient val tableSplit: TableSplit)
