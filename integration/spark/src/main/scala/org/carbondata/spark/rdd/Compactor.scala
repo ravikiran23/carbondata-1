@@ -83,7 +83,18 @@ object Compactor {
     carbonLoadModel.setLoadMetadataDetails(segmentStatusManager
       .readLoadMetadata(carbonTable.getMetaDataFilepath()).toList.asJava
     )
-    val execInstance = sc.sparkContext.getConf.get("spark.executor.instances", "1")
+    var execInstance = "1"
+    if (sc.sparkContext.getConf.contains("spark.executor.instances")) {
+      execInstance = sc.sparkContext.getConf.get("spark.executor.instances")
+      logger.info("spark.executor.instances property is set to =" + execInstance)
+    }
+    else if (sc.sparkContext.getConf.contains("spark.dynamicAllocation.enabled")) {
+      if (sc.sparkContext.getConf.get("spark.dynamicAllocation.enabled").trim
+        .equalsIgnoreCase("true")) {
+        execInstance = sc.sparkContext.getConf.get("spark.dynamicAllocation.maxExecutors")
+        logger.info("spark.dynamicAllocation.maxExecutors property is set to =" + execInstance)
+      }
+    }
 
     val mergeStatus = new CarbonMergerRDD(
       sc.sparkContext,
