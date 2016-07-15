@@ -1035,12 +1035,12 @@ class CarbonSqlParser()
        "(?i)int".r ^^^ "int" | "(?i)double".r ^^^ "double" | decimalType
 
   /**
-    * Matching the decimal(10,0) data type and returning the same.
-    */
+   * Matching the decimal(10,0) data type and returning the same.
+   */
   private lazy val decimalType =
     "(?i)decimal".r ~ ("(" ~> numericLit <~",") ~ (numericLit <~ ")")  ^^ {
-      case d ~ p ~s =>
-        s"$d($p, $s)"
+      case decimal ~ precision ~scale =>
+        s"$decimal($precision, $scale)"
     }
 
   protected lazy val nestedType: Parser[Field] = structFieldType | arrayFieldType |
