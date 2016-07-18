@@ -374,6 +374,12 @@ class CarbonSqlParser()
             val (db, tblName) = extractDbNameTableName(t)
             dbName = db
             tableName = tblName.toLowerCase()
+            // verify whether the database or table name is a key word or not.
+            // if key word is used then throwing the exception as it is not allowed.
+            if (dbName.fold(false) { isKeyWord(_)} || isKeyWord(tableName) ) {
+              val errorMessage = "key word can not be used for database or table name."
+              throw new MalformedCarbonCommandException(errorMessage)
+            }
 
           case Token("TOK_TABLECOMMENT", child :: Nil) =>
             tableComment = BaseSemanticAnalyzer.unescapeSQLString(child.getText)
@@ -420,6 +426,15 @@ class CarbonSqlParser()
 
     }
   }
+
+  /**
+   * To determine whether an identifier is a key word or not.
+   *
+   * @param input
+   * @return
+   */
+  private def isKeyWord(input: String): Boolean =
+    newReservedWords.exists(keyword => keyword.equalsIgnoreCase(input))
 
   /**
    * This function will traverse the tree and logical plan will be formed using that.
