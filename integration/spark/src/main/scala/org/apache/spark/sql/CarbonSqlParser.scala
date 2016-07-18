@@ -143,6 +143,17 @@ class CarbonSqlParser()
   protected val SEGMENTS = carbonKeyWord("SEGMENTS")
   protected val SEGMENT = carbonKeyWord("SEGMENT")
 
+  protected val STRING = carbonKeyWord("STRING")
+  protected val INTEGER = carbonKeyWord("INTEGER")
+  protected val TIMESTAMP = carbonKeyWord("TIMESTAMP")
+  protected val NUMERIC = carbonKeyWord("NUMERIC")
+  protected val DECIMAL = carbonKeyWord("DECIMAL")
+  protected val DOUBLE = carbonKeyWord("DOUBLE")
+  protected val INT = carbonKeyWord("INT")
+  protected val BIGINT = carbonKeyWord("BIGINT")
+  protected val ARRAY = carbonKeyWord("ARRAY")
+  protected val STRUCT = carbonKeyWord("STRUCT")
+
   protected val doubleQuotedString = "\"([^\"]+)\"".r
   protected val singleQuotedString = "'([^']+)'".r
 
@@ -1040,15 +1051,15 @@ class CarbonSqlParser()
   protected lazy val dimCol: Parser[Field] = anyFieldDef
 
   protected lazy val primitiveTypes =
-    "(?i)string".r ^^^ "string" | "(?i)integer".r ^^^ "integer" | "(?i)timestamp".r ^^^
-    "timestamp" | "(?i)numeric".r ^^^ "numeric" | "(?i)bigint".r ^^^ "bigint" |
-       "(?i)int".r ^^^ "int" | "(?i)double".r ^^^ "double" | decimalType
+    STRING ^^^ "string" | INTEGER ^^^ "integer" | TIMESTAMP ^^^
+    "timestamp" | NUMERIC ^^^ "numeric" | BIGINT ^^^ "bigint" |
+       INT ^^^ "int" | DOUBLE ^^^ "double" | decimalType
 
   /**
    * Matching the decimal(10,0) data type and returning the same.
    */
   private lazy val decimalType =
-    "(?i)decimal".r ~ ("(" ~> numericLit <~",") ~ (numericLit <~ ")")  ^^ {
+    DECIMAL ~ ("(" ~> numericLit <~",") ~ (numericLit <~ ")")  ^^ {
       case decimal ~ precision ~scale =>
         s"$decimal($precision, $scale)"
     }
@@ -1069,7 +1080,7 @@ class CarbonSqlParser()
     }
 
   protected lazy val arrayFieldType: Parser[Field] =
-    (("(?i)array".r ^^^ "array") ~> "<" ~> nestedType <~ ">") ^^ {
+    ((ARRAY ^^^ "array") ~> "<" ~> nestedType <~ ">") ^^ {
       case e1 =>
         Field("unknown", Some("array"), Some("unknown"),
           Some(List(Field("val", e1.dataType, Some("val"),
@@ -1077,14 +1088,14 @@ class CarbonSqlParser()
     }
 
   protected lazy val structFieldType: Parser[Field] =
-    (("(?i)struct".r ^^^ "struct") ~> "<" ~> repsep(anyFieldDef, ",") <~ ">") ^^ {
+    ((STRUCT ^^^ "struct") ~> "<" ~> repsep(anyFieldDef, ",") <~ ">") ^^ {
       case e1 =>
         Field("unknown", Some("struct"), Some("unknown"), Some(e1))
     }
 
   protected lazy val measureCol: Parser[Field] =
-    (ident | stringLit) ~ ("(?i)integer".r ^^^ "integer" | "(?i)numeric".r ^^^ "numeric" |
-      "(?i)bigint".r ^^^ "bigint" | "(?i)decimal".r ^^^ "decimal").? ~
+    (ident | stringLit) ~ (INTEGER ^^^ "integer" | NUMERIC ^^^ "numeric" |
+      BIGINT ^^^ "bigint" | DECIMAL ^^^ "decimal").? ~
       (AS ~> (ident | stringLit)).? ~ (IN ~> (ident | stringLit)).? ^^ {
       case e1 ~ e2 ~ e3 ~ e4 => Field(e1, e2, e3, Some(null))
     }
