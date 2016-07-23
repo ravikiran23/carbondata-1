@@ -428,6 +428,7 @@ object CarbonDataRDDFactory extends Logging {
               catch {
                 case e: Exception =>
                   logger.error("Exception in compaction thread " + e.getMessage)
+                  throw e
               }
             }
             )
