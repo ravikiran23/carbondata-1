@@ -73,7 +73,7 @@ class CarbonMergerRDD[K, V](
       val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
 
       val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
-        .getTableName + '_' +  carbonLoadModel.getTaskNo
+        .getTableName + carbonLoadModel.getTaskNo
       CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
 
       // sorting the table block info List.
