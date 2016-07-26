@@ -57,6 +57,7 @@ class CarbonMergerRDD[K, V](
 
   val defaultParallelism = sc.defaultParallelism
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
+  sc.setLocalProperty("spark.job.interruptOnCancel", "true")
 
   val storeLocation = carbonMergerMapping.storeLocation
   val hdfsStoreLocation = carbonMergerMapping.hdfsStoreLocation
