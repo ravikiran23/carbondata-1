@@ -161,6 +161,12 @@ public final class CarbonDataMergerUtil {
         for (LoadMetadataDetails loadDetail : loadDetails) {
           // check if this segment is merged.
           if (loadsToMerge.contains(loadDetail)) {
+            // if the compacted load is deleted after the start of the compaction process,
+            // then need to discard the compaction process and treat it as failed compaction.
+            if (loadDetail.getLoadStatus()
+                .equalsIgnoreCase(CarbonCommonConstants.MARKED_FOR_DELETE)) {
+              return tableStatusUpdationStatus;
+            }
             loadDetail.setLoadStatus(CarbonCommonConstants.SEGMENT_COMPACTED);
             loadDetail.setModificationOrdeletionTimesStamp(modificationOrDeletionTimeStamp);
             loadDetail.setMergedLoadName(mergedLoadNumber);
