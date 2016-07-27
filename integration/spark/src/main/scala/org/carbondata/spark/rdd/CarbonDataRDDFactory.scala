@@ -429,6 +429,20 @@ object CarbonDataRDDFactory extends Logging {
                 case e: Exception =>
                   logger.error("Exception in compaction thread " + e.getMessage)
                   executor.shutdown()
+                  // Deleting the any partially loaded data if present.
+                  // in some case the segment folder which is present in store will not have entry in
+                  // status.
+                  // so deleting those folders.
+                  try {
+                    CarbonLoaderUtil.deletePartialLoadDataIfExist(carbonLoadModel, true)
+                  }
+                  catch {
+                    case e: Exception =>
+                      logger
+                        .error("Exception in compaction thread while clean up of stale segments " + e
+                          .getMessage
+                        )
+                  }
                   compactionLock.unlock()
                   throw e
               }
