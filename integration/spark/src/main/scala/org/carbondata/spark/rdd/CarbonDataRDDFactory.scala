@@ -484,7 +484,8 @@ object CarbonDataRDDFactory extends Logging {
               kettleHomePath,
               compactionModel.cubeCreationTime,
               loadsToMerge,
-              sqlContext
+              sqlContext,
+              compactionModel.compactionType
             )
             )
             futureList.add(future)

@@ -28,6 +28,7 @@ import org.carbondata.core.carbon.metadata.schema.table.CarbonTable
 import org.carbondata.core.constants.CarbonCommonConstants
 import org.carbondata.core.load.LoadMetadataDetails
 import org.carbondata.core.util.CarbonProperties
+import org.carbondata.integration.spark.merger.CompactionType
 import org.carbondata.lcm.status.SegmentStatusManager
 import org.carbondata.spark.load.{CarbonLoaderUtil, CarbonLoadModel}
 import org.carbondata.spark.MergeResultImpl
@@ -48,7 +49,8 @@ object Compactor {
     kettleHomePath: String,
     cubeCreationTime: Long,
     loadsToMerge: java.util.List[LoadMetadataDetails],
-    sc: SQLContext): Unit = {
+    sc: SQLContext,
+    compactionType: CompactionType): Unit = {
 
     val startTime = System.nanoTime();
     val mergedLoadName = CarbonDataMergerUtil.getMergedLoadName(loadsToMerge)
@@ -117,7 +119,7 @@ object Compactor {
       logger.info("time taken to merge " + mergedLoadName + " is " + (endTime - startTime))
       CarbonDataMergerUtil
         .updateLoadMetadataWithMergeStatus(loadsToMerge, carbonTable.getMetaDataFilepath(),
-          mergedLoadName, carbonLoadModel, mergeLoadStartTime
+          mergedLoadName, carbonLoadModel, mergeLoadStartTime, compactionType
         )
       logger
         .audit("Compaction request completed for table " + carbonLoadModel
