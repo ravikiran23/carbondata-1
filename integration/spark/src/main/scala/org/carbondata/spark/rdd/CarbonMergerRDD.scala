@@ -21,6 +21,7 @@ import java.util
 import java.util.{Collections, List}
 
 import scala.collection.JavaConverters._
+import scala.util.Random
 
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark._
@@ -59,7 +60,7 @@ class CarbonMergerRDD[K, V](
   sc.setLocalProperty("spark.scheduler.pool", "DDL")
   sc.setLocalProperty("spark.job.interruptOnCancel", "true")
 
-  val storeLocation = carbonMergerMapping.storeLocation
+  var storeLocation = carbonMergerMapping.storeLocation
   val hdfsStoreLocation = carbonMergerMapping.hdfsStoreLocation
   val metadataFilePath = carbonMergerMapping.metadataFilePath
   val mergedLoadName = carbonMergerMapping.mergedLoadName
@@ -70,11 +71,24 @@ class CarbonMergerRDD[K, V](
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
     val iter = new Iterator[(K, V)] {
 
+      val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
+        .getTableName + '_' + carbonLoadModel.getTaskNo
+
+      val storeLocations = CarbonLoaderUtil.getConfiguredLocalDirs(SparkEnv.get.conf)
+      if (null != storeLocations && storeLocations.length > 0) {
+        storeLocation = storeLocations(Random.nextInt(storeLocations.length))
+      }
+      if (storeLocation == null) {
+        storeLocation = System.getProperty("java.io.tmpdir")
+      }
+      storeLocation = storeLocation + '/' + System.nanoTime() + '/' + theSplit.index
+      CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
       var mergeStatus = false
       try {
         var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
         carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
         val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
+      LOGGER.info("TempstoreLocation taken is " + storeLocation)
 
         val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
           .getTableName + carbonLoadModel.getTaskNo
