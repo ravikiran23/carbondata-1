@@ -83,7 +83,6 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
-      System.out.println( "Segments =" + segments)
       segments.foreach(seg =>
         System.out.println( "valid segment is =" + seg)
       )
