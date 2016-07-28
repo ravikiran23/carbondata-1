@@ -20,11 +20,11 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
 
   override def beforeAll {
     CarbonProperties.getInstance().addProperty("carbon.compaction.level.threshold", "2,2")
-    sql("drop table if exists  ignoreMajor")
+    sql("drop table if exists  ignoremajor")
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "mm/dd/yyyy")
     sql(
-      "CREATE TABLE IF NOT EXISTS ignoreMajor (country String, ID Int, date Timestamp, name " +
+      "CREATE TABLE IF NOT EXISTS ignoremajor (country String, ID Int, date Timestamp, name " +
         "String, " +
         "phonetype String, serialname String, salary Int) STORED BY 'org.apache.carbondata" +
         ".format'"
@@ -38,26 +38,27 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
     val csvFilePath2 = currentDirectory + "/src/test/resources/compaction/compaction2.csv"
     val csvFilePath3 = currentDirectory + "/src/test/resources/compaction/compaction3.csv"
 
-    sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoreMajor OPTIONS" +
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoremajor OPTIONS" +
       "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
     )
-    sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoreMajor  OPTIONS" +
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoremajor  OPTIONS" +
       "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
     )
     // compaction will happen here.
-    sql("alter table ignoreMajor compact 'major'"
+    sql("alter table ignoremajor compact 'major'"
     )
-    sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoreMajor OPTIONS" +
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoremajor OPTIONS" +
       "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
     )
-    sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoreMajor  OPTIONS" +
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoremajor  OPTIONS" +
       "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
     )
-    sql("alter table ignoreMajor compact 'minor'"
+    sql("alter table ignoremajor compact 'minor'"
     )
     Thread.sleep(5000)
-    sql("alter table ignoreMajor compact 'minor'"
+    sql("alter table ignoremajor compact 'minor'"
     )
+    Thread.sleep(5000)
   }
 
  /* /**
@@ -74,7 +75,7 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
       val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
           AbsoluteTableIdentifier(
             CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-            new CarbonTableIdentifier("default", "ignoreMajor", noOfRetries + "")
+            new CarbonTableIdentifier("default", "ignoremajor", noOfRetries + "")
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
@@ -104,7 +105,7 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
       val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
           AbsoluteTableIdentifier(
             CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-            new CarbonTableIdentifier("default", "ignoreMajor", "1")
+            new CarbonTableIdentifier("default", "ignoremajor", "1")
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
@@ -125,12 +126,12 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
     */
   test("delete merged folder and check segments") {
     // delete merged segments
-    sql("clean files for table ignoreMajor")
+    sql("clean files for table ignoremajor")
 
     val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
         AbsoluteTableIdentifier(
           CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-          new CarbonTableIdentifier("default", "ignoreMajor", "rrr")
+          new CarbonTableIdentifier("default", "ignoremajor", "rrr")
         )
     )
     // merged segment should not be there
