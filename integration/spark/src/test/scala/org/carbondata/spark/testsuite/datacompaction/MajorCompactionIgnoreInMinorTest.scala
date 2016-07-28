@@ -79,13 +79,18 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
       val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
           AbsoluteTableIdentifier(
             CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-            new CarbonTableIdentifier("default", "ignoreMajor", "1")
+            new CarbonTableIdentifier("default", "ignoreMajor", noOfRetries + "")
           )
       )
       val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
+      System.out.println( "Segments =" + segments)
+      segments.foreach(seg =>
+        System.out.println( "valid segment is =" + seg)
+      )
 
       if (!segments.contains(requiredSeg)) {
         // wait for 2 seconds for compaction to complete.
+        System.out.println("sleping for 2 seconds.")
         Thread.sleep(2000)
         noOfRetries += 1
       }
@@ -106,7 +111,7 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
     val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
         AbsoluteTableIdentifier(
           CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
-          new CarbonTableIdentifier("default", "ignoreMajor", "uniqueid")
+          new CarbonTableIdentifier("default", "ignoreMajor", "rrr")
         )
     )
     // merged segment should not be there
