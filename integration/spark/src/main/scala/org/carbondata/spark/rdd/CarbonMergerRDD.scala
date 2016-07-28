@@ -83,12 +83,13 @@ class CarbonMergerRDD[K, V](
       }
       storeLocation = storeLocation + '/' + System.nanoTime() + '/' + theSplit.index
       CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
+      LOGGER.info("TempstoreLocation taken is " + storeLocation)
       var mergeStatus = false
+      var mergeNumber = ""
       try {
         var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
         carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
         val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
-      LOGGER.info("TempstoreLocation taken is " + storeLocation)
 
         val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
           .getTableName + carbonLoadModel.getTaskNo
@@ -140,7 +141,7 @@ class CarbonMergerRDD[K, V](
             }
         }
 
-        val mergeNumber = mergedLoadName
+        mergeNumber = mergedLoadName
           .substring(mergedLoadName.lastIndexOf(CarbonCommonConstants.LOAD_FOLDER) +
             CarbonCommonConstants.LOAD_FOLDER.length(), mergedLoadName.length()
           )
@@ -170,6 +171,16 @@ class CarbonMergerRDD[K, V](
         case e: Exception =>
           LOGGER.error(e)
           throw e
+      }
+      finally {
+        // delete temp location data
+        val newSlice = CarbonCommonConstants.LOAD_FOLDER + mergeNumber
+        try {
+          CarbonLoaderUtil.deleteLocalDataLoadFolderLocation(carbonLoadModel, newSlice)
+        } catch {
+          case e: Exception =>
+            LOGGER.error(e)
+        }
       }
 
       var finished = false
