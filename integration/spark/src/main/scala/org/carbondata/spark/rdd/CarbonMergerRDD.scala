@@ -71,6 +71,7 @@ class CarbonMergerRDD[K, V](
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
     val iter = new Iterator[(K, V)] {
 
+      carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
       val tempLocationKey: String = CarbonCommonConstants
         .COMPACTION_KEY_WORD + '_' + carbonLoadModel
         .getDatabaseName + '_' + carbonLoadModel
@@ -90,7 +91,6 @@ class CarbonMergerRDD[K, V](
       var mergeNumber = ""
       try {
         var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
-        carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
         val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
 
         // sorting the table block info List.
