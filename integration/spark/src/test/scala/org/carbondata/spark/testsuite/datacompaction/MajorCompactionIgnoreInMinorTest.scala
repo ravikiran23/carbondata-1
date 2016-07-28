@@ -47,25 +47,20 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
     // compaction will happen here.
     sql("alter table ignoreMajor compact 'major'"
     )
-    if (checkCompactionCompletedOrNot("0.1")) {
-      sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoreMajor OPTIONS" +
-        "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
-      )
-      sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoreMajor  OPTIONS" +
-        "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
-      )
-      sql("alter table ignoreMajor compact 'minor'"
-      )
-      if (checkCompactionCompletedOrNot("2.1")) {
-        sql("alter table ignoreMajor compact 'minor'"
-        )
-      }
-
-    }
-
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath1 + "' INTO TABLE ignoreMajor OPTIONS" +
+      "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
+    )
+    sql("LOAD DATA LOCAL INPATH '" + csvFilePath2 + "' INTO TABLE ignoreMajor  OPTIONS" +
+      "('DELIMITER'= ',', 'QUOTECHAR'= '\"')"
+    )
+    sql("alter table ignoreMajor compact 'minor'"
+    )
+    Thread.sleep(5000)
+    sql("alter table ignoreMajor compact 'minor'"
+    )
   }
 
-  /**
+ /* /**
     * Check if the compaction is completed or not.
     *
     * @param requiredSeg
@@ -99,6 +94,30 @@ class MajorCompactionIgnoreInMinorTest extends QueryTest with BeforeAndAfterAll 
       }
     }
     return status
+  }*/
+
+  test("check if compaction is completed or not.") {
+    var status = true
+    var noOfRetries = 0
+    while (status && noOfRetries < 10) {
+
+      val segmentStatusManager: SegmentStatusManager = new SegmentStatusManager(new
+          AbsoluteTableIdentifier(
+            CarbonProperties.getInstance.getProperty(CarbonCommonConstants.STORE_LOCATION),
+            new CarbonTableIdentifier("default", "ignoreMajor", "1")
+          )
+      )
+      val segments = segmentStatusManager.getValidSegments().listOfValidSegments.asScala.toList
+
+      if (!segments.contains("2.1")) {
+        // wait for 2 seconds for compaction to complete.
+        Thread.sleep(2000)
+        noOfRetries += 1
+      }
+      else {
+        status = false
+      }
+    }
   }
 
   /**
