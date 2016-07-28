@@ -177,7 +177,7 @@ public final class CarbonDataMergerUtil {
         loadMetadataDetails.setLoadStartTime(mergeLoadStartTime);
         loadMetadataDetails.setPartitionCount("0");
         // if this is a major compaction then set the segment as major compaction.
-        if (compactionType.equals(CompactionType.MAJOR_COMPACTION)){
+        if (compactionType == CompactionType.MAJOR_COMPACTION) {
           loadMetadataDetails.setMajorCompacted("true");
         }
 
@@ -519,8 +519,9 @@ public final class CarbonDataMergerUtil {
       // if a segment is already merged 2 levels then it s name will become .2
       // need to exclude those segments from minor compaction.
       // if a segment is major compacted then should not be considered for minor.
-      if (segName.endsWith(".2") || (segment.isMajorCompacted() != null && segment
-          .isMajorCompacted().equalsIgnoreCase("true"))) {
+      if (segName.endsWith(CarbonCommonConstants.LEVEL2_COMPACTION_INDEX) || (
+          segment.isMajorCompacted() != null && segment.isMajorCompacted()
+              .equalsIgnoreCase("true"))) {
         continue;
       }
 
