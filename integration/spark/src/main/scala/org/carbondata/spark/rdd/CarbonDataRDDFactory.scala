@@ -397,6 +397,12 @@ object CarbonDataRDDFactory extends Logging {
 
     if (loadsToMerge.size() > 1) {
 
+      val sortedSegments: util.List[LoadMetadataDetails] = new util.ArrayList[LoadMetadataDetails](
+        segList
+      )
+      CarbonDataMergerUtil.sortSegments(sortedSegments)
+      val lastSegment = sortedSegments.get(sortedSegments.size()-1)
+
       new Thread {
         override def run(): Unit = {
 
@@ -415,37 +421,25 @@ object CarbonDataRDDFactory extends Logging {
               }
               )
 
+              // scan again and determine if anything is there to merge again.
+              readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
+              segList = carbonLoadModel.getLoadMetadataDetails
               // in case of major compaction we will scan only once and come out as it will keep
               // on doing major for the new loads also.
+              // excluding the newly added segments.
               if (compactionModel.compactionType == CompactionType.MAJOR_COMPACTION) {
-                // not getting the latest list of loads and only scanning the old segments list.
-                // so that if any thing is pending to be merged will only get merged instead of
-                // new loads
-                segList = CarbonDataMergerUtil
-                  .filterOutAlreadyMergedSegments(segList, loadsToMerge)
-                loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
-                  hdfsStoreLocation,
-                  carbonLoadModel,
-                  partitioner.partitionCount,
-                  compactionModel.compactionSize,
-                  segList,
-                  compactionModel.compactionType
-                )
-              }
-              else {
-                // scan again and determine if anything is there to merge again.
-                readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
-                segList = carbonLoadModel.getLoadMetadataDetails
 
-                loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
-                  hdfsStoreLocation,
-                  carbonLoadModel,
-                  partitioner.partitionCount,
-                  compactionModel.compactionSize,
-                  segList,
-                  compactionModel.compactionType
-                )
+                segList = CarbonDataMergerUtil
+                  .filterOutNewlyAddedSegments(segList, loadsToMerge, lastSegment)
               }
+              loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
+                hdfsStoreLocation,
+                carbonLoadModel,
+                partitioner.partitionCount,
+                compactionModel.compactionSize,
+                segList,
+                compactionModel.compactionType
+              )
             }
           }
           catch {
