@@ -71,7 +71,9 @@ class CarbonMergerRDD[K, V](
     val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
     val iter = new Iterator[(K, V)] {
 
-      val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
+      val tempLocationKey: String = CarbonCommonConstants
+        .COMPACTION_KEY_WORD + '_' + carbonLoadModel
+        .getDatabaseName + '_' + carbonLoadModel
         .getTableName + '_' + carbonLoadModel.getTaskNo
 
       val storeLocations = CarbonLoaderUtil.getConfiguredLocalDirs(SparkEnv.get.conf)
@@ -83,17 +85,13 @@ class CarbonMergerRDD[K, V](
       }
       storeLocation = storeLocation + '/' + System.nanoTime() + '/' + theSplit.index
       CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
-      LOGGER.info("TempstoreLocation taken is " + storeLocation)
+      LOGGER.info("Temp storeLocation taken is " + storeLocation)
       var mergeStatus = false
       var mergeNumber = ""
       try {
         var dataloadStatus = CarbonCommonConstants.STORE_LOADSTATUS_FAILURE
         carbonLoadModel.setTaskNo(String.valueOf(theSplit.index))
         val carbonSparkPartition = theSplit.asInstanceOf[CarbonSparkPartition]
-
-        val tempLocationKey: String = carbonLoadModel.getDatabaseName + '_' + carbonLoadModel
-          .getTableName + carbonLoadModel.getTaskNo
-        CarbonProperties.getInstance().addProperty(tempLocationKey, storeLocation)
 
         // sorting the table block info List.
         var tableBlockInfoList = carbonSparkPartition.tableBlockInfos
@@ -150,7 +148,8 @@ class CarbonMergerRDD[K, V](
           factTableName,
           carbonLoadModel.getTaskNo,
           "0",
-          mergeNumber
+          mergeNumber,
+          true
         )
 
         carbonLoadModel.setSegmentId(mergeNumber)
