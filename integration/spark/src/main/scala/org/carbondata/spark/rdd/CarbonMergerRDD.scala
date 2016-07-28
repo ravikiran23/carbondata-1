@@ -175,7 +175,9 @@ class CarbonMergerRDD[K, V](
         // delete temp location data
         val newSlice = CarbonCommonConstants.LOAD_FOLDER + mergeNumber
         try {
-          CarbonLoaderUtil.deleteLocalDataLoadFolderLocation(carbonLoadModel, newSlice)
+          val isCompactionFlow = true
+          CarbonLoaderUtil
+            .deleteLocalDataLoadFolderLocation(carbonLoadModel, newSlice, isCompactionFlow)
         } catch {
           case e: Exception =>
             LOGGER.error(e)
