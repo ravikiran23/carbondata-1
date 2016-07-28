@@ -691,16 +691,4 @@ public final class CarbonDataMergerUtil {
     return combinedMap;
   }
 
-  public static List<LoadMetadataDetails> filterOutAlreadyMergedSegments(
-      List<LoadMetadataDetails> segments, List<LoadMetadataDetails> loadsToMerge) {
-
-    ArrayList<LoadMetadataDetails> list = new ArrayList<>(segments);
-
-    for (LoadMetadataDetails mergedSegs : loadsToMerge) {
-      list.remove(mergedSegs);
-    }
-
-    return list;
-
-  }
 }
