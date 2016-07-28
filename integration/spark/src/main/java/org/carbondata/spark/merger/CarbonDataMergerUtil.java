@@ -165,6 +165,8 @@ public final class CarbonDataMergerUtil {
             // then need to discard the compaction process and treat it as failed compaction.
             if (loadDetail.getLoadStatus()
                 .equalsIgnoreCase(CarbonCommonConstants.MARKED_FOR_DELETE)) {
+              LOGGER.error("Compaction is aborted as the segment " + loadDetail.getLoadName()
+                  + " is deleted after the compaction is started.");
               return tableStatusUpdationStatus;
             }
             loadDetail.setLoadStatus(CarbonCommonConstants.SEGMENT_COMPACTED);
