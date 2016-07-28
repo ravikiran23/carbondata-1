@@ -418,10 +418,22 @@ object CarbonDataRDDFactory extends Logging {
               // in case of major compaction we will scan only once and come out as it will keep
               // on doing major for the new loads also.
               if (compactionModel.compactionType == CompactionType.MAJOR_COMPACTION) {
-                loadsToMerge = new util.ArrayList[LoadMetadataDetails](0)
+                // not getting the latest list of loads and only scanning the old segments list.
+                // so that if any thing is pending to be merged will only get merged instead of
+                // new loads
+                segList = CarbonDataMergerUtil
+                  .filterOutAlreadyMergedSegments(segList, loadsToMerge)
+                loadsToMerge = CarbonDataMergerUtil.identifySegmentsToBeMerged(
+                  hdfsStoreLocation,
+                  carbonLoadModel,
+                  partitioner.partitionCount,
+                  compactionModel.compactionSize,
+                  segList,
+                  compactionModel.compactionType
+                )
               }
               else {
-                // scan again and deterrmine if anything is there to merge again.
+                // scan again and determine if anything is there to merge again.
                 readLoadMetadataDetails(carbonLoadModel, hdfsStoreLocation)
                 segList = carbonLoadModel.getLoadMetadataDetails
 
