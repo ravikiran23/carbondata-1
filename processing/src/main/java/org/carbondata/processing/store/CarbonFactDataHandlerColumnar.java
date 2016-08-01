@@ -360,6 +360,8 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
         CarbonUtil.identifyDimensionType(carbonTable.getDimensionByTableName(tableName));
 
     this.compactionFlow = carbonFactDataHandlerModel.isCompactionFlow();
+    // in compaction flow the measure with decimal type will come as spark decimal.
+    // need to convert it to byte array.
     if (compactionFlow) {
       try {
         numberOfCores = Integer.parseInt(CarbonProperties.getInstance()
@@ -902,6 +904,8 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
           decimal[count] = (decimal[count] > num ? decimal[count] : num);
         } else if (type[count] == CarbonCommonConstants.BIG_DECIMAL_MEASURE) {
           byte[] buff = null;
+          // in compaction flow the measure with decimal type will come as spark decimal.
+          // need to convert it to byte array.
           if (this.compactionFlow) {
             BigDecimal bigDecimal = ((Decimal) row[customMeasureIndex[i]]).toJavaBigDecimal();
             buff = DataTypeUtil.bigDecimalToByte(bigDecimal);
