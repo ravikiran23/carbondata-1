@@ -907,7 +907,7 @@ public class CarbonFactDataHandlerColumnar implements CarbonFactHandler {
           // in compaction flow the measure with decimal type will come as spark decimal.
           // need to convert it to byte array.
           if (this.compactionFlow) {
-            BigDecimal bigDecimal = ((Decimal) row[customMeasureIndex[i]]).toJavaBigDecimal();
+            BigDecimal bigDecimal = ((Decimal) row[count]).toJavaBigDecimal();
             buff = DataTypeUtil.bigDecimalToByte(bigDecimal);
           } else {
             buff = (byte[]) row[count];
