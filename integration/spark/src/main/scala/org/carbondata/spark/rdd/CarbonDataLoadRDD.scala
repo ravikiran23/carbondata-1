@@ -222,7 +222,7 @@ class CarbonDataLoadRDD[K, V](
             try {
               val isCompaction = false
               CarbonLoaderUtil
-                .deleteLocalDataLoadFolderLocation(model, newSlice, isCompaction)
+                .deleteLocalDataLoadFolderLocation(model, isCompaction)
             } catch {
               case e: Exception =>
                 LOGGER.error(e)
